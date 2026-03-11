@@ -1,4 +1,4 @@
-import { prisma } from "../lib/prisma.js";
+import { prisma } from "../db_client/prisma.js";
 
 // POST
 export const createProject = async (req, res, next) => {
