@@ -4,17 +4,20 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Project {
-  id          Int      @id @default(autoincrement())
-  project     String
-  Energy_kwh  Float
-  Price       Float
-  Nro_panels  Int
-  status      String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  project    String   @db.VarChar(255)
+  energy_kwh Float
+  price      Float
+  nro_panels Int
+  status     String   @db.VarChar(50)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("project")
 }

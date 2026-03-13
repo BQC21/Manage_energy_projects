@@ -72,14 +72,14 @@ function Home() {
                     <article className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
                         <p className="text-sm text-slate-400">Installed panels</p>
                         <p className="mt-2 text-3xl font-semibold text-white">
-                            {projects.reduce((sum, project) => sum + project.Nro_panels, 0)}
+                            {projects.reduce((sum, project) => sum + project.nro_panels, 0)}
                         </p>
                     </article>
                     <article className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
                         <p className="text-sm text-slate-400">Estimated portfolio value</p>
                         <p className="mt-2 text-3xl font-semibold text-white">
                             {formatCurrency(
-                                projects.reduce((sum, project) => sum + project.Price, 0),
+                                projects.reduce((sum, project) => sum + project.price, 0),
                             )}
                         </p>
                     </article>
@@ -136,25 +136,25 @@ function Home() {
                                         <div className="rounded-xl bg-white/5 p-3">
                                             <dt className="text-slate-400">Energy</dt>
                                             <dd className="mt-1 text-lg font-semibold text-white">
-                                                {formatEnergy(project.Energy_kwh)} kWh
+                                                {formatEnergy(project.energy_kwh)} kWh
                                             </dd>
                                         </div>
                                         <div className="rounded-xl bg-white/5 p-3">
                                             <dt className="text-slate-400">Budget</dt>
                                             <dd className="mt-1 text-lg font-semibold text-white">
-                                                {formatCurrency(project.Price)}
+                                                {formatCurrency(project.price)}
                                             </dd>
                                         </div>
                                         <div className="rounded-xl bg-white/5 p-3">
                                             <dt className="text-slate-400">Panels</dt>
                                             <dd className="mt-1 text-lg font-semibold text-white">
-                                                {project.Nro_panels}
+                                                {project.nro_panels}
                                             </dd>
                                         </div>
                                         <div className="rounded-xl bg-white/5 p-3">
                                             <dt className="text-slate-400">Updated</dt>
                                             <dd className="mt-1 text-lg font-semibold text-white">
-                                                {new Date(project.updatedAt).toLocaleDateString("en-US")}
+                                                {new Date(project.updated_at).toLocaleDateString("en-US")}
                                             </dd>
                                         </div>
                                     </dl>
