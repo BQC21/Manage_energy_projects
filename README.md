@@ -179,7 +179,7 @@ Each handler follows the same pattern: validate input → call `prisma.<model>.<
 **Validation** — `validateProjectBody` checks for required fields and correct types before hitting the database:
 
 ```js
-const REQUIRED_FIELDS = ["project", "Energy_kwh", "Price", "Nro_panels", "status"];
+const REQUIRED_FIELDS = ["project", "LCOE", "Price", "Nro_panels", "status"];
 ```
 
 **CRUD operations with Prisma:**
