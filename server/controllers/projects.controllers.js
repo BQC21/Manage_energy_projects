@@ -1,7 +1,8 @@
 import { prisma } from "../db_client/prisma.js";
 
-const REQUIRED_FIELDS = ["project", "Energy_kwh", "Price", "Nro_panels", "status"];
+const REQUIRED_FIELDS = ["project", "LCOE", "Price", "Nro_panels", "status"];
 
+// validate project body for create and update
 function validateProjectBody(body) {
     const missing = REQUIRED_FIELDS.filter((f) => body[f] === undefined || body[f] === "");
     if (missing.length > 0) {
@@ -10,8 +11,8 @@ function validateProjectBody(body) {
         return err;
     }
 
-    if (typeof body.Energy_kwh !== "number" || body.Energy_kwh < 0) {
-        const err = new Error("Energy_kwh must be a positive number");
+    if (typeof body.LCOE !== "number" || body.LCOE < 0) {
+        const err = new Error("LCOE must be a positive number");
         err.statusCode = 400;
         return err;
     }

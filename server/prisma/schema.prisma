@@ -12,7 +12,7 @@ datasource db {
 model Project {
   id         Int      @id @default(autoincrement())
   project    String   @db.VarChar(255)
-  energy_kwh Float
+  LCOE       Float
   price      Float
   nro_panels Int
   status     String   @db.VarChar(50)
