@@ -52,35 +52,20 @@ function Home() {
             <Navbar />
             <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
                 <section className="overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-emerald-500/20 via-cyan-500/10 to-slate-900 p-8 shadow-2xl shadow-cyan-950/40">
-                    <p className="text-sm font-semibold uppercase tracking-[0.35em] text-emerald-300">
-                        Project overview
-                    </p>
                     <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                        Monitor uploaded solar projects from the database.
+                        Bienvenido al gestor de proyectos solares
                     </h1>
-                    <p className="mt-4 max-w-2xl text-base text-slate-300 sm:text-lg">
-                        This dashboard reads the current project inventory from the API and
-                        summarizes the latest photovoltaic opportunities in one place.
-                    </p>
                 </section>
 
                 <section className="grid gap-4 sm:grid-cols-3">
                     <article className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
-                        <p className="text-sm text-slate-400">Total projects</p>
+                        <p className="text-sm text-slate-400">Proyectos registrados</p>
                         <p className="mt-2 text-3xl font-semibold text-white">{projects.length}</p>
                     </article>
                     <article className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
-                        <p className="text-sm text-slate-400">Installed panels</p>
+                        <p className="text-sm text-slate-400">Paneles instalados</p>
                         <p className="mt-2 text-3xl font-semibold text-white">
                             {projects.reduce((sum, project) => sum + project.nro_panels, 0)}
-                        </p>
-                    </article>
-                    <article className="rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
-                        <p className="text-sm text-slate-400">Estimated portfolio value</p>
-                        <p className="mt-2 text-3xl font-semibold text-white">
-                            {formatCurrency(
-                                projects.reduce((sum, project) => sum + project.price, 0),
-                            )}
                         </p>
                     </article>
                 </section>
@@ -88,10 +73,10 @@ function Home() {
                 <section className="rounded-3xl border border-white/10 bg-slate-900/85 p-6 shadow-2xl shadow-slate-950/40">
                     <div className="flex flex-col gap-2 border-b border-white/10 pb-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <h2 className="text-2xl font-semibold text-white">Uploaded projects</h2>
-                            <p className="text-sm text-slate-400">
-                                Live records served by `GET /api/projects`
-                            </p>
+                            <h2 className="text-2xl font-semibold text-white">Proyectos cargados</h2>
+                            {/* <p className="text-sm text-slate-400">
+                                Registros en vivo servidos por `GET /api/projects`
+                            </p> */}
                         </div>
                     </div>
 
