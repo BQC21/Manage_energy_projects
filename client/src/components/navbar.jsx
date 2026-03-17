@@ -1,17 +1,36 @@
 import { NavLink } from "react-router-dom";
 
+import { useEffect, useRef } from 'react';
+import Typed from 'typed.js';
+
+function useTypewriterEffect() {
+    const el = useRef(null);
+
+    useEffect(() => {
+    const typed = new Typed(el.current, {
+        strings: ['TEC Energy Solutions S.A.C', 
+            'Energía para un futuro sostenible'],
+        typeSpeed: 50,
+        backSpeed: 50,
+        loop: true,
+    });
+
+    return () => {
+        // Destroy Typed instance during cleanup to stop animation
+        typed.destroy();
+    };
+    }, []);
+
+    return el;
+}
 
 function Navbar() {
+    const typewriterRef = useTypewriterEffect();
     return (
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/85 backdrop-blur">
+        <header className="sticky top-0 z-40 border-b border-white/10 bg-slate-950/85 backdrop-blur">
             <nav className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.35em] text-emerald-300">
-                        Manage Energy
-                    </p>
-                    <span className="mt-1 block text-lg font-semibold text-white">
-                        Project manager
-                    </span>
+                <div className="typewriter-container">
+                    <h2 ref={typewriterRef}></h2>
                 </div>
 
                 <NavLink
