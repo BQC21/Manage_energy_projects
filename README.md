@@ -1,6 +1,20 @@
 # Manage Energy Projects — PERN Stack CRUD with Neon
 
-Full-stack application to manage solar energy projects. Built with the **PERN** stack (PostgreSQL · Express · React · Node.js) using **Prisma ORM** and a **Neon** serverless Postgres database.
+Full-stack application to manage solar energy projects. Built with the **PERN** stack (PostgreSQL · Express · React · Node.js) using **Prisma ORM** and a **Neon** serverless database.
+
+---
+
+## System Architecture
+
+The application is divided into three main layers according to the system design:
+
+- **Client (Frontend)**: React.js application that manages user interaction and consumes services via HTTP requests.
+- **Services Layer (Backend)**:
+- **Server - Express.js**: Responsible for data management, credential validation, and CRUD operations.
+- **Server - FastAPI**: Specialized in data processing, Excel scraping, and PDF report generation.
+- **Data Layer**: Persistent storage with dedicated databases for Projects and Authentication.
+
+---
 
 ---
 
@@ -20,26 +34,27 @@ Full-stack application to manage solar energy projects. Built with the **PERN** 
 
 ```
 Manage_energy_projects/
-├── server/                  # Express API
-│   ├── controllers/         # Business logic (CRUD handlers)
-│   ├── routes/              # Route definitions
-│   ├── middlewares/         # logger, successHandler, errorHandler, notFound
-│   ├── db_client/           # Prisma client singleton
-│   ├── prisma/
-│   │   ├── schema.prisma    # Data model
-│   │   └── migrations/      # Migration history
-│   └── index.js             # Server entry point
-└── client/                  # React SPA
-    └── src/
-        ├── api/             # Fetch wrappers (projects.api.js)
-        ├── components/      # Shared UI components
-        ├── pages/           # Page-level components
-        └── App.jsx          # Route declarations
+├── client/ # React Application (Frontend)
+│ └── src/
+│ ├── api/ # Backend Communication Services
+│ ├── components/ # Reusable Interface Components
+│ ├── pages/ # Main Application Views
+│ └── App.jsx # Route and Navigation Configuration
+├── server/ # Express.js Server (Data Management)
+│ ├── controllers/ # CRUD Controller Logic
+│ ├── routes/ # API Endpoint Definition
+│ ├── middlewares/ # Intermediate functions (Auth, etc.)
+│ ├── db_client/ # Prisma client configuration
+│ ├── prisma/ # Database schemas and migrations
+│ └── index.js # Node server entry point
+└── python_server/ # FastAPI server (Processing and PDF)
 ```
 
 ---
 
-## 1. Neon — Database Setup
+## Database Setting
+
+### 1. Neon — Database Setup
 
 1. Create a free account at [neon.tech](https://neon.tech).
 2. Create a new **Project** and a **Database** (e.g. `energy_db`).
@@ -47,9 +62,7 @@ Manage_energy_projects/
    - **Connection string** → pooled connection (used by Prisma at runtime).
    - **Direct URL** → non-pooled connection (used by Prisma Migrate).
 
----
-
-## 2. Environment Variables
+### 2. Environment Variables
 
 Create a `.env` file inside `server/`:
 
@@ -60,9 +73,8 @@ DIRECT_URL="postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/energy_db?
 
 > Neon requires both `DATABASE_URL` (pooled) and `DIRECT_URL` (direct) so that Prisma Migrate can bypass the connection pooler.
 
----
 
-## 3. Prisma Schema
+### 3. Prisma Schema
 
 `server/prisma/schema.prisma` defines the data source using both URLs and the `Project` model:
 
@@ -92,9 +104,7 @@ model Project {
 }
 ```
 
----
-
-## 4. Run Migrations & Generate Client
+### 4. Run Migrations & Generate Client
 
 ```bash
 cd server
@@ -121,7 +131,9 @@ export const prisma = new PrismaClient();
 
 ---
 
-## 5. Express Server
+## Backend instalation
+
+<!-- ## 5. Express Server
 
 `server/index.js` wires together middlewares and routes:
 
@@ -201,13 +213,29 @@ const REQUIRED_FIELDS = ["project", "LCOE", "Price", "Nro_panels", "status"];
   "message": "Projects retrieved",
   "data": [ ... ]
 }
+``` -->
+
+### Express server
+
+```bash
+cd server
+npm install
+npm prisma generate
+npm run dev
+```
+
+### FastAPI server
+```bash
+cd python_server
+pip install -r requirements.txt
+python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000  
 ```
 
 ---
 
-## 7. React Client
+## React Client installation
 
-### API layer (`client/src/api/projects.api.js`)
+<!-- ### API layer (`client/src/api/projects.api.js`)
 
 Thin `fetch` wrappers — one function per CRUD operation:
 
@@ -250,49 +278,33 @@ function App() {
         </Routes>
     );
 }
-```
-
----
-
-## 8. Running the Project
-
-### Backend
-
-```bash
-cd server
-npm install
-npm run migrate    # first time only — creates tables on Neon
-npm run dev        # starts server with nodemon on port 3000
-```
-
-### Frontend
+``` -->
 
 ```bash
 cd client
 npm install
-npm run dev        # starts Vite dev server on port 5173
+npm run dev
 ```
 
 Open `http://localhost:5173` in the browser.
 
 ---
 
-## 9. Data Flow Summary
+## Workflow
 
-```
-Browser (React)
-    │  fetch()
-    ▼
-Express API  (Node.js)
-    │  Prisma Client
-    ▼
-Neon (PostgreSQL serverless)
-```
+1. **UI Interaction**: The user performs actions in the React client.
 
-1. React calls a function from `projects.api.js`.
-2. Express receives the request, runs middlewares (logger → successHandler).
-3. The router delegates to the matching controller.
-4. The controller validates the input, then calls `prisma.<operation>()`.
-5. Prisma translates the call into SQL and executes it against the Neon database over the `DATABASE_URL` connection.
-6. The result travels back through `res.success()` as a unified JSON envelope.
-7. React reads `payload.data` and updates state.
+2. **Data Management**: Validation and CRUD requests are sent to the Express server.
+
+3. **Processing**: Heavy-duty scraping and document generation tasks are delegated to FastAPI.
+
+4. **Persistence**: Data is validated and queried in the PostgreSQL data layer.
+
+---
+
+## Features
+
+- Comprehensive energy project management.
+- User authentication and validation.
+- Data import via Excel file scraping.
+- Export of results and reports in PDF format.
