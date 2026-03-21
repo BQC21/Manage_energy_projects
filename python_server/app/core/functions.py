@@ -17,6 +17,14 @@ def extraer_entero(celda):
     else:
         return 0.0
 
+
+def _safe_div(numerator, denominator):
+    num = extraer_entero(numerator)
+    den = extraer_entero(denominator)
+    if den == 0:
+        return 0.0
+    return num / den
+
 def construir_gastos(ws,
         minimo_vector_EQUIPOS,
         maximo_vector_EQUIPOS,
@@ -92,6 +100,28 @@ def total_cot(df_principal):
 
     return resumen
 
+
+def total_cot_value(resumen):
+    total_raw = resumen.get("Total", "")
+    if not isinstance(total_raw, str):
+        return float(total_raw) if total_raw is not None else 0.0
+    cleaned = re.sub(r"[^0-9.]", "", total_raw)
+    return float(cleaned) if cleaned else 0.0
+
+
+def count_nro_panels(df_equipos):
+    if df_equipos.empty:
+        return 0
+
+    panel_rows = df_equipos[
+        df_equipos["Descripción"].astype(str).str.contains("panel solar", case=False, na=False)
+    ]
+    if panel_rows.empty:
+        return 0
+
+    total = panel_rows["Cantidad"].apply(extraer_entero).sum()
+    return int(round(total))
+
 def cf_table(
         ws,
         column_cf_anio,
@@ -109,7 +139,7 @@ def cf_table(
     Construye el DataFrame del flujo de caja desde la hoja "FLUJO DE CAJA" del Excel.
     """
     df_flujo = pd.DataFrame(columns=['Año', 'Equipamiento', 'Tarifa', 'OPEX', 
-                                    'Energía', 'Ahorro', 'Flujo Total', 'Flujo Acumulado'])
+                                    'Energía', 'Ahorro', 'Flujo Total', 'Flujo Acumulado', 'LCOE'])
     
     for fila in range(minimo_vector, maximo_vector + 1):
 
@@ -131,7 +161,8 @@ def cf_table(
                 'Energía': energia,
                 'Ahorro': ahorro,
                 'Flujo Total': flujo_total,
-                'Flujo Acumulado': flujo_acumulado
+                'Flujo Acumulado': flujo_acumulado,
+                'LCOE': _safe_div(extraer_entero(equipamiento) - extraer_entero(opex), energia),
             }])
             df_flujo = pd.concat([df_flujo, new_row], ignore_index=True)
 

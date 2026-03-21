@@ -1,6 +1,7 @@
 import { prisma } from "../db_client/prisma.js";
 
-const REQUIRED_FIELDS = ["project", "LCOE", "Price", "Nro_panels", "status"];
+const REQUIRED_FIELDS = ["project", "LCOE", "price", "nro_panels", "status"];
+const UPDATABLE_FIELDS = ["project", "LCOE", "price", "nro_panels", "status", "excel_file_path", "pdf_quote", "pdf_finantial"];
 
 // validate project body for create and update
 function validateProjectBody(body) {
@@ -16,18 +17,60 @@ function validateProjectBody(body) {
         err.statusCode = 400;
         return err;
     }
-    if (typeof body.Price !== "number" || body.Price < 0) {
+    if (typeof body.price !== "number" || body.price < 0) {
         const err = new Error("Price must be a positive number");
         err.statusCode = 400;
         return err;
     }
-    if (!Number.isInteger(body.Nro_panels) || body.Nro_panels < 0) {
+    if (!Number.isInteger(body.nro_panels) || body.nro_panels < 0) {
         const err = new Error("Nro_panels must be a positive integer");
         err.statusCode = 400;
         return err;
     }
 
     return null; // success
+}
+
+function validatePartialProjectBody(body) {
+    const keys = Object.keys(body || {});
+    if (keys.length === 0) {
+        const err = new Error("No fields provided to update");
+        err.statusCode = 400;
+        return err;
+    }
+
+    const invalidKeys = keys.filter((k) => !UPDATABLE_FIELDS.includes(k));
+    if (invalidKeys.length > 0) {
+        const err = new Error(`Invalid fields for update: ${invalidKeys.join(", ")}`);
+        err.statusCode = 400;
+        return err;
+    }
+
+    if (body.LCOE !== undefined && (typeof body.LCOE !== "number" || body.LCOE < 0)) {
+        const err = new Error("LCOE must be a positive number");
+        err.statusCode = 400;
+        return err;
+    }
+
+    if (body.price !== undefined && (typeof body.price !== "number" || body.price < 0)) {
+        const err = new Error("Price must be a positive number");
+        err.statusCode = 400;
+        return err;
+    }
+
+    if (body.nro_panels !== undefined && (!Number.isInteger(body.nro_panels) || body.nro_panels < 0)) {
+        const err = new Error("Nro_panels must be a positive integer");
+        err.statusCode = 400;
+        return err;
+    }
+
+    if (body.status !== undefined && (typeof body.status !== "string" || body.status.trim() === "")) {
+        const err = new Error("status must be a non-empty string");
+        err.statusCode = 400;
+        return err;
+    }
+
+    return null;
 }
 
 // ── POST /api/projects ───────────────────────────────────────────────────────
@@ -83,11 +126,14 @@ export const updateProject = async (req, res, next) => {
         return next(err);
     }
 
-    const validationError = validateProjectBody(req.body);
+    const validationError = validatePartialProjectBody(req.body);
     if (validationError) return next(validationError);
 
     try {
-        const project = await prisma.project.update({ where: { id }, data: req.body });
+        const data = Object.fromEntries(
+            Object.entries(req.body).filter(([key]) => UPDATABLE_FIELDS.includes(key))
+        );
+        const project = await prisma.project.update({ where: { id }, data });
         res.success(project, "Project updated");
     } catch (err) {
         next(err);
