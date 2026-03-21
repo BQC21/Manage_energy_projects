@@ -79,6 +79,7 @@ DEFAULT_CFG: Dict[str, Any] = {
         "column_parametro": "B",
         "column_valor": "C",
         "column_unidad": "D",
+        
         "maximo_vector_parametros_financieros": 2,
         "minimo_vector_parametros_financieros": 12,
     }
