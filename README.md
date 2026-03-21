@@ -9,9 +9,9 @@ Full-stack application to manage solar energy projects. Built with the **PERN** 
 The application is divided into three main layers according to the system design:
 
 - **Client (Frontend)**: React.js application that manages user interaction and consumes services via HTTP requests.
-- **Services Layer (Backend)**:
-- **Server - Express.js**: Responsible for data management, credential validation, and CRUD operations.
-- **Server - FastAPI**: Specialized in data processing, Excel scraping, and PDF report generation.
+  - **Services Layer (Backend)**:
+  - **Server - Express.js**: Responsible for data management, credential validation, and CRUD operations.
+  - **Server - FastAPI**: Specialized in data processing, Excel scraping, and PDF report generation.
 - **Data Layer**: Persistent storage with dedicated databases for Projects and Authentication.
 
 ---
@@ -23,9 +23,11 @@ The application is divided into three main layers according to the system design
 | Layer    | Technology                              |
 |----------|-----------------------------------------|
 | Database | PostgreSQL hosted on **Neon**           |
-| ORM      | Prisma 6                                |
+| ORM (Express)    | Prisma 6                                |
+| ORM (Python)     | SQLalchemy                                |
 | Backend  | Node.js + Express 5                     |
-| Frontend | React 19 + Vite + Tailwind CSS 4        |
+| Backend (Python) | Fast API                   |
+| Frontend | React 19 + Vite       |
 | Routing  | React Router DOM 7                      |
 
 ---
@@ -39,6 +41,7 @@ Manage_energy_projects/
 │ ├── api/ # Backend Communication Services
 │ ├── components/ # Reusable Interface Components
 │ ├── pages/ # Main Application Views
+│ ├── styles/ # stylization of DOM elements
 │ └── App.jsx # Route and Navigation Configuration
 ├── server/ # Express.js Server (Data Management)
 │ ├── controllers/ # CRUD Controller Logic
@@ -47,7 +50,11 @@ Manage_energy_projects/
 │ ├── db_client/ # Prisma client configuration
 │ ├── prisma/ # Database schemas and migrations
 │ └── index.js # Node server entry point
-└── python_server/ # FastAPI server (Processing and PDF)
+├── python_server/ # FastAPI server (Processing and PDF)
+│ ├── app/ # CRUD Controller Logic
+│   ├── api/ # API Endpoint and routing
+│   ├── core/ # (Excel scrapping and PDF generation) Controller Logic
+|   └── db/ # Database schemas and connection with SQLalchemy
 ```
 
 ---
@@ -64,7 +71,7 @@ Manage_energy_projects/
 
 ### 2. Environment Variables
 
-Create a `.env` file inside `server/`:
+Create a `.env` file inside both servers (`server/` & `python_server/`):
 
 ```env
 DATABASE_URL="postgresql://user:password@ep-xxx.us-east-2.aws.neon.tech/energy_db?sslmode=require"
@@ -91,14 +98,17 @@ datasource db {
 }
 
 model Project {
-  id         Int      @id @default(autoincrement())
-  project    String   @db.VarChar(255)
-  energy_kwh Float
-  price      Float
-  nro_panels Int
-  status     String   @db.VarChar(50)
-  created_at DateTime @default(now()) @db.Timestamptz(6)
-  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  id               Int      @id @default(autoincrement())
+  project          String   @db.VarChar(255)
+  LCOE             Float
+  price            Float
+  nro_panels       Int
+  status           String   @db.VarChar(50)
+  excel_file_path  String?  @db.VarChar(500)
+  pdf_quote        String?  @db.VarChar(500)
+  pdf_finantial    String?  @db.VarChar(500)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("project")
 }
@@ -230,6 +240,17 @@ cd python_server
 pip install -r requirements.txt
 python3 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000  
 ```
+
+FastAPI now reads `DATABASE_URL` (for Neon) from environment variables.  
+It automatically loads `.env` from:
+
+- `python_server/.env`
+- `server/.env` (recommended, already used by Prisma)
+
+It also exposes:
+
+- `GET /health` (API health)
+- `GET /health/db` (Neon/PostgreSQL connectivity check)
 
 ---
 
