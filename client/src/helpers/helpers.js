@@ -15,9 +15,6 @@ export function toFiniteNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-// Para el Excel, el backend espera un FormData con el 
-// archivo y un campo "overrides_json" con un JSON 
-// stringificado de las modificaciones a aplicar al reporte.
 export function buildReportFormData(file) {
   const fd = new FormData();
   fd.append("excel_file", file, file.name);
@@ -30,7 +27,7 @@ export function isPdfResponse(res) {
 }
 
 // Crea un enlace temporal para descargar 
-// el blob y lo revoca después de usarlo.
+// el blob y lo revoca después de usarlo (liberar memoria).
 export function downloadBlob(blob, filename) {
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -39,7 +36,7 @@ export function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  return objectUrl;
+  return objectUrl; // e
 }
 
 export async function parseErrorResponse(res) {
