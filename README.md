@@ -4,6 +4,16 @@ Full-stack application to manage solar energy projects. Built with the **PERN** 
 
 ---
 
+## Events
+1- Select Excel file from local folders
+2- Click on "Subir Excel" button to upload DB_proyectos
+3- Click on "X" button to delete project
+4- Click on "Generar PDF" from quote or finantial attribute of DB_proyectos
+5- Click on Excel file from Excel attribute of DB_proyectos
+6- Change status clicking on "Cambiar estado" button
+
+--
+
 ## System Architecture
 
 The application is divided into three main layers according to the system design:
