@@ -17,7 +17,7 @@ Full-stack application to manage solar energy projects. Built with the **PERN** 
   
   6- Change status clicking on "Cambiar estado" button
 
---
+---
 
 ## System Architecture
 
