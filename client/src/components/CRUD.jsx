@@ -32,10 +32,13 @@ function CRUD() {
     // PDF Generation State
     const [busy_quote, setBusy_quote] = useState(false);
     const [busy_financial, setBusy_financial] = useState(false);
+    const [busy_excel, setBusy_excel] = useState(false);
     const [message_quote, setMessage_quote] = useState("");
     const [message_financial, setMessage_financial] = useState("");
+    const [message_excel, setMessage_excel] = useState("");
     const [messageType_quote, setMessageType_quote] = useState("info");
     const [messageType_financial, setMessageType_financial] = useState("info");
+    const [messageType_excel, setMessageType_excel] = useState("info");
 
     // Projects Data State
     const [projects, setProjects] = useState([]);
@@ -55,6 +58,7 @@ function CRUD() {
     const ENDPOINT_quote = `${BACKEND_BASE}/api/reports/quote`;
     const ENDPOINT_financial = `${BACKEND_BASE}/api/reports/finantial`;
     const ENDPOINT_process = `${BACKEND_BASE}/api/reports/process-project`;
+    const ENDPOINT_download_excel = `${BACKEND_BASE}/api/reports/download-excel`;
 
     // -------------------- EVENTS ----------------------------
 
@@ -155,6 +159,74 @@ function CRUD() {
             console.error(err);
         }
     };
+
+    // Download Excel file handler
+    const DownloadExcel = async (
+        ENDPOINT_download_excel,
+        setMessage_excel,
+        setMessageType_excel,
+        setBusy_excel,
+        projectId
+    ) => {
+        setMessage_excel("Descargando...");
+        setMessageType_excel("info");
+        setBusy_excel(true);
+
+        try {
+            // 1) Si el archivo está en memoria (recién subido), descárgalo directo
+            const localFile = projectExcelFiles[projectId];
+            if (localFile) {
+                const localUrl = URL.createObjectURL(localFile);
+                const link = document.createElement("a");
+                link.href = localUrl;
+                link.download = localFile.name || `project_${projectId}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
+
+                setMessage_excel("Excel descargado.");
+                setMessageType_excel("ok");
+                return;
+            }
+
+            // 2) Fallback: pedir el Excel persistido al backend
+            // Cambia /process-project por /download-excel
+            const downloadEndpoint = ENDPOINT_process.replace(/process-project\/?$/, "download-excel");
+            const res = await fetch(`${downloadEndpoint}?project_id=${projectId}`, {
+                method: "GET",
+            });
+
+            if (!res.ok) {
+                throw new Error(await helpers.parseErrorResponse(res));
+            }
+
+            const blob = await res.blob();
+            const objectUrl = URL.createObjectURL(blob);
+
+            const disposition = res.headers.get("content-disposition") || "";
+            const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+            const filename = match?.[1] ? decodeURIComponent(match[1].replace(/"/g, "")) : `project_${projectId}.xlsx`;
+
+            const link = document.createElement("a");
+            link.href = objectUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            setMessage_excel("Excel descargado.");
+            setMessageType_excel("ok");
+        } catch (error) {
+            console.error(error);
+            setMessage_excel(`Error: ${error.message}`);
+            setMessageType_excel("err");
+        } finally {
+            setBusy_excel(false);
+        }
+    };
+
 
     // PDF Generation Handler
     const generatePdf = async (ENDPOINT, setMessage, setMessageType, setBusy, filename, projectId) => {
@@ -377,12 +449,25 @@ function CRUD() {
                                     <td>
                                         {new Date(project.updated_at).toLocaleDateString("en-US")}
                                     </td>
-                                    <td>
+                                    {/* <td>
                                         {projectExcelFiles[project.id] ? (
                                             <span className="file-name">{projectExcelFiles[project.id].name}</span>
                                         ) : (
                                             <span className="no-file">No Excel</span>
                                         )}
+                                    </td> */}
+                                    <td>
+                                        <button 
+                                            id="btnGenerate_excel"
+                                            className="btn-secondary"
+                                            disabled={busy_excel || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => DownloadExcel(ENDPOINT_download_excel, setMessage_excel, setMessageType_excel, setBusy_excel, project.id)}>
+                                            Descargar Excel
+                                        </button>
+                                        <div className="status">
+                                            {busy_excel && <div className="spinner" aria-hidden="true"></div>}
+                                            <span className={`msg ${messageType_excel === "ok" ? "ok" : messageType_excel === "err" ? "err" : ""}`}>{message_excel}</span>
+                                        </div>                                        
                                     </td>
                                     <td>
                                         <button 
