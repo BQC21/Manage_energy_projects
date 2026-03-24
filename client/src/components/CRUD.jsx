@@ -1,25 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { getProjectsRequest, updateProjectRequest, deleteProjectRequest, createProjectRequest } from "../api/projects.api";
+import {
+    getProjectsRequest,
+    updateProjectRequest,
+    deleteProjectRequest,
+    createProjectRequest,
+    processProjectRequest,
+    downloadExcelRequest,
+    generateQuotePdfRequest,
+    generateFinancialPdfRequest,
+} from "../api/projects.api";
 import * as helpers from "../helpers/helpers";
 
 import GRAPHS from "./GRAPHS";
-
-// precio de venta
-function formatCurrency(value) {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        maximumFractionDigits: 2,
-    }).format(value);
-}
-
-// LCOE
-function formatLCOE(value) {
-    return new Intl.NumberFormat("en-US", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-    }).format(value);
-}
 
 function CRUD() {
 
@@ -55,13 +47,6 @@ function CRUD() {
     // Ref to prevent infinite loops
     const hasInitialized = useRef(false);
 
-    // API Configuration
-    const BACKEND_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
-    const ENDPOINT_quote = `${BACKEND_BASE}/api/reports/quote`;
-    const ENDPOINT_financial = `${BACKEND_BASE}/api/reports/finantial`;
-    const ENDPOINT_process = `${BACKEND_BASE}/api/reports/process-project`;
-    const ENDPOINT_download_excel = `${BACKEND_BASE}/api/reports/download-excel`;
-
     // -------------------- EVENTS ----------------------------
 
     // Change Excel File
@@ -84,9 +69,9 @@ function CRUD() {
 
             const projectData = Array.isArray(payload.data) ? payload.data : [];
             setProjects(projectData);
-            if (projectData.length > 0 && !selectedProjectId) {
-                setSelectedProjectId(projectData[0].id);
-            }
+
+            const resolvedProjectId = helpers.resolveSelectedProjectId(selectedProjectId, projectData);
+            setSelectedProjectId(resolvedProjectId);
         } catch (err) {
             setError(err.message || "Unable to load projects");
         } finally {
@@ -102,9 +87,10 @@ function CRUD() {
         }
 
         try {
-            let projectIdToUse = selectedProjectId;
+            // Evita enviar IDs obsoletos al backend (causa "Project not found").
+            let projectIdToUse = helpers.resolveSelectedProjectId(selectedProjectId, projects);
 
-            if (projectIdToUse == null && projects.length === 0) {
+            if (projectIdToUse == null) {
                 const baseProject = {
                     project: "Proyecto inicial",
                     LCOE: 0,
@@ -140,10 +126,7 @@ function CRUD() {
             formData.append("excel_file", excelFile, excelFile.name);
             formData.append("project_id", String(projectIdToUse));
 
-            const req = await fetch(ENDPOINT_process, {
-                method: "POST",
-                body: formData,
-            });
+            const req = await processProjectRequest(formData);
 
             if (!req.ok) {
                 const errPayload = await req.json().catch(() => null);
@@ -164,7 +147,6 @@ function CRUD() {
 
     // Download Excel file handler
     const DownloadExcel = async (
-        ENDPOINT_download_excel,
         setMessage_excel,
         setMessageType_excel,
         setBusy_excel,
@@ -175,49 +157,28 @@ function CRUD() {
         setBusy_excel(true);
 
         try {
-            // 1) Si el archivo está en memoria (recién subido), descárgalo directo
+            // 1) Si el archivo esta en memoria (recien subido), descargalo directo
             const localFile = projectExcelFiles[projectId];
             if (localFile) {
-                const localUrl = URL.createObjectURL(localFile);
-                const link = document.createElement("a");
-                link.href = localUrl;
-                link.download = localFile.name || `project_${projectId}.xlsx`;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                setTimeout(() => URL.revokeObjectURL(localUrl), 1000);
-
+                helpers.downloadBlob(localFile, localFile.name || `project_${projectId}.xlsx`);
                 setMessage_excel("Excel descargado.");
                 setMessageType_excel("ok");
                 return;
             }
 
             // 2) Fallback: pedir el Excel persistido al backend
-            // Cambia /process-project por /download-excel
-            const downloadEndpoint = ENDPOINT_process.replace(/process-project\/?$/, "download-excel");
-            const res = await fetch(`${downloadEndpoint}?project_id=${projectId}`, {
-                method: "GET",
-            });
+            const res = await downloadExcelRequest(projectId);
 
             if (!res.ok) {
                 throw new Error(await helpers.parseErrorResponse(res));
             }
 
             const blob = await res.blob();
-            const objectUrl = URL.createObjectURL(blob);
-
-            const disposition = res.headers.get("content-disposition") || "";
-            const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
-            const filename = match?.[1] ? decodeURIComponent(match[1].replace(/"/g, "")) : `project_${projectId}.xlsx`;
-
-            const link = document.createElement("a");
-            link.href = objectUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            const filename = helpers.getFilenameFromDisposition(
+                res.headers.get("content-disposition"),
+                `project_${projectId}.xlsx`
+            );
+            helpers.downloadBlob(blob, filename);
             setMessage_excel("Excel descargado.");
             setMessageType_excel("ok");
         } catch (error) {
@@ -229,24 +190,45 @@ function CRUD() {
         }
     };
 
-
     // PDF Generation Handler
-    const generatePdf = async (ENDPOINT, setMessage, setMessageType, setBusy, filename, projectId) => {
+    const generatePdf = async (reportType, setMessage, setMessageType, setBusy, filename, projectId) => {
         setMessage("Generando...");
         setMessageType("info");
 
-        const projectFile = projectExcelFiles[projectId];
-        if (!projectFile) {
-            setMessage("No hay archivo Excel asociado a este proyecto.");
-            setMessageType("err");
-            return;
-        }
-
-        const formData = helpers.buildReportFormData(projectFile);
-
         setBusy(true);
         try {
-            const res = await fetch(ENDPOINT, { method: "POST", body: formData });
+            let projectFile = projectExcelFiles[projectId];
+
+            // Fallback tras refresh: recuperar Excel persistido desde backend
+            if (!projectFile) {
+                const projectMeta = projects.find((p) => p.id === projectId);
+                if (!projectMeta?.excel_file_path) {
+                    setMessage("No hay archivo Excel asociado a este proyecto.");
+                    setMessageType("err");
+                    return;
+                }
+
+                const excelRes = await downloadExcelRequest(projectId);
+                if (!excelRes.ok) {
+                    throw new Error(await helpers.parseErrorResponse(excelRes));
+                }
+
+                const excelBlob = await excelRes.blob();
+                const inferredName = helpers.getFilenameFromDisposition(
+                    excelRes.headers.get("content-disposition"),
+                    `project_${projectId}.xlsx`
+                );
+
+                projectFile = new File([excelBlob], inferredName, {
+                    type: excelBlob.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                });
+            }
+
+            const formData = helpers.buildReportFormData(projectFile);
+
+            const res = reportType === "quote"
+                ? await generateQuotePdfRequest(formData)
+                : await generateFinancialPdfRequest(formData);
             if (!res.ok) {
                 throw new Error(await helpers.parseErrorResponse(res));
             }
@@ -435,13 +417,13 @@ function CRUD() {
                                 <tr key={project.id}>
                                     <td>{project.project}</td>
                                     <td>
-                                        {formatCurrency(project.price ?? project.Price ?? 0)}
+                                        {helpers.formatCurrency(project.price ?? project.Price ?? 0)}
                                     </td>
                                     <td>
                                         {project.nro_panels ?? project.Nro_panels ?? 0}
                                     </td>
                                     <td>
-                                        {formatLCOE(project.LCOE ?? project.lcoe ?? 0)}
+                                        {helpers.formatLCOE(project.LCOE ?? project.lcoe ?? 0)}
                                     </td>
                                     <td>
                                         <span className="status-badge">
@@ -451,19 +433,12 @@ function CRUD() {
                                     <td>
                                         {new Date(project.updated_at).toLocaleDateString("en-US")}
                                     </td>
-                                    {/* <td>
-                                        {projectExcelFiles[project.id] ? (
-                                            <span className="file-name">{projectExcelFiles[project.id].name}</span>
-                                        ) : (
-                                            <span className="no-file">No Excel</span>
-                                        )}
-                                    </td> */}
                                     <td>
                                         <button 
                                             id="btnGenerate_excel"
                                             className="btn-secondary"
                                             disabled={busy_excel || (!projectExcelFiles[project.id] && !project.excel_file_path)}
-                                            onClick={() => DownloadExcel(ENDPOINT_download_excel, setMessage_excel, setMessageType_excel, setBusy_excel, project.id)}>
+                                            onClick={() => DownloadExcel(setMessage_excel, setMessageType_excel, setBusy_excel, project.id)}>
                                             Descargar Excel
                                         </button>
                                         <div className="status">
@@ -475,8 +450,8 @@ function CRUD() {
                                         <button 
                                             id="btnGenerate_quote"
                                             className="btn-secondary"
-                                            disabled={busy_quote || !projectExcelFiles[project.id]}
-                                            onClick={() => generatePdf(ENDPOINT_quote, setMessage_quote, setMessageType_quote, setBusy_quote, 'reporte_final_quote.pdf', project.id)}>
+                                            disabled={busy_quote || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => generatePdf("quote", setMessage_quote, setMessageType_quote, setBusy_quote, 'reporte_final_quote.pdf', project.id)}>
                                             Abrir PDF
                                         </button>
                                         <div className="status">
@@ -488,8 +463,8 @@ function CRUD() {
                                         <button 
                                             id="btnGenerate_finantial"
                                             className="btn-secondary"
-                                            disabled={busy_financial || !projectExcelFiles[project.id]}
-                                            onClick={() => generatePdf(ENDPOINT_financial, setMessage_financial, setMessageType_financial, setBusy_financial, 'reporte_final_finantial.pdf', project.id)}>
+                                            disabled={busy_financial || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => generatePdf("finantial", setMessage_financial, setMessageType_financial, setBusy_financial, 'reporte_final_finantial.pdf', project.id)}>
                                             Abrir PDF
                                         </button>
                                         <div className="status">
