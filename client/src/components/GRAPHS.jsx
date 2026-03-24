@@ -102,15 +102,17 @@ function GRAPHS({ projects = [] }) {
                     high={panelGoals * 0.8}
                     optimum={panelGoals}
                 />
-                <p>
+                <label>
                     {panelCurrent} / {panelGoals}
-                </p>
+                </label>
             </div>
-            <div className="lcoe-bar-chart">
-                <canvas ref={barCanvasRef} />
-            </div>
-            <div className="price-pie-chart">
-                <canvas ref={pieCanvasRef} />
+            <div className="charts-grid">
+                <div className="lcoe-bar-chart">
+                    <canvas ref={barCanvasRef} />
+                </div>
+                <div className="price-pie-chart">
+                    <canvas ref={pieCanvasRef} />
+                </div>
             </div>
         </>
     );
