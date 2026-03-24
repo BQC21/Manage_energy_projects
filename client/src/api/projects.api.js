@@ -1,4 +1,5 @@
-const API = "http://localhost:3000/api/projects";
+const SERVER_BASE = import.meta.env.VITE_SERVER_API_URL || "http://localhost:3000";
+const API = `${SERVER_BASE}/api/projects`;
 
 /////////////////////////////
 

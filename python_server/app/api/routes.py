@@ -195,7 +195,7 @@ async def process_project(
         project = db.execute(select(Project).where(Project.id == project_id)).scalar_one_or_none()
         if project is None:
             raise HTTPException(status_code=404, detail="Project not found")
-
+        project.project = str(report_context["dict_datos"]["cliente"])
         project.excel_file_path = str(tmp_excel_path)
         project.pdf_quote = str(quote_pdf_path)
         project.pdf_finantial = str(finantial_pdf_path)

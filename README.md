@@ -230,7 +230,7 @@ const REQUIRED_FIELDS = ["project", "LCOE", "Price", "Nro_panels", "status"];
 ```bash
 cd server
 npm install
-npm prisma generate
+npm run generate
 npm run dev
 ```
 
@@ -305,6 +305,12 @@ function App() {
 cd client
 npm install
 npm run dev
+```
+
+Optional environment variable for Express API base URL in frontend:
+
+```env
+VITE_SERVER_API_URL="http://localhost:3000"
 ```
 
 Open `http://localhost:5173` in the browser.
