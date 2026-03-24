@@ -1,18 +1,19 @@
 const SERVER_BASE = import.meta.env.VITE_SERVER_API_URL || "http://localhost:3000";
 const API = `${SERVER_BASE}/api/projects`;
 
-/////////////////////////////
+const PYTHON_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const REPORTS_API = `${PYTHON_BASE}/api/reports`;
 
-export const getProjectsRequest  = ()         => fetch(API);
+export const getProjectsRequest = () => fetch(API);
 
-export const getProjectRequest   = (id)       => fetch(`${API}/${id}`);
+export const getProjectRequest = (id) => fetch(`${API}/${id}`);
 
 export const createProjectRequest = (project) =>
     fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(project),
-});
+    });
 
 export const updateProjectRequest = (id, project) =>
     fetch(`${API}/${id}`, {
@@ -22,6 +23,29 @@ export const updateProjectRequest = (id, project) =>
     });
 
 export const deleteProjectRequest = (id) =>
-    fetch(`${API}/${id}`, { 
-        method: "DELETE" 
-});
+    fetch(`${API}/${id}`, {
+        method: "DELETE",
+    });
+
+export const processProjectRequest = (formData) =>
+    fetch(`${REPORTS_API}/process-project`, {
+        method: "POST",
+        body: formData,
+    });
+
+export const downloadExcelRequest = (projectId) =>
+    fetch(`${REPORTS_API}/download-excel?project_id=${projectId}`, {
+        method: "GET",
+    });
+
+export const generateQuotePdfRequest = (formData) =>
+    fetch(`${REPORTS_API}/quote`, {
+        method: "POST",
+        body: formData,
+    });
+
+export const generateFinancialPdfRequest = (formData) =>
+    fetch(`${REPORTS_API}/finantial`, {
+        method: "POST",
+        body: formData,
+    });

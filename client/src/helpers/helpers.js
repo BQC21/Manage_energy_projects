@@ -15,6 +15,29 @@ export function toFiniteNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+export function formatCurrency(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function formatLCOE(value) {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+export function resolveSelectedProjectId(selectedProjectId, projects) {
+  const rows = Array.isArray(projects) ? projects : [];
+  if (rows.length === 0) return null;
+  const hasSelected = rows.some((p) => p.id === selectedProjectId);
+  if (hasSelected) return selectedProjectId;
+  return rows[0].id;
+}
+
 export function buildReportFormData(file) {
   const fd = new FormData();
   fd.append("excel_file", file, file.name);
@@ -26,8 +49,18 @@ export function isPdfResponse(res) {
   return ct.includes("application/pdf");
 }
 
-// Crea un enlace temporal para descargar 
-// el blob y lo revoca después de usarlo (liberar memoria).
+export function getFilenameFromDisposition(contentDisposition, fallbackName) {
+  const disposition = contentDisposition || "";
+  const match = disposition.match(/filename\*?=(?:UTF-8''|")?([^";]+)/i);
+  if (!match?.[1]) return fallbackName;
+  try {
+    return decodeURIComponent(match[1].replace(/"/g, ""));
+  } catch {
+    return fallbackName;
+  }
+}
+
+// Crea un enlace temporal para descargar el blob y revoca la URL luego.
 export function downloadBlob(blob, filename) {
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -36,7 +69,7 @@ export function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   a.remove();
-  return objectUrl; // e
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 export async function parseErrorResponse(res) {
