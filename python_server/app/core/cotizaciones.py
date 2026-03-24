@@ -9,7 +9,7 @@ from openpyxl import load_workbook
 
 from .configs import build_config
 from .functions import construir_gastos, total_cot, total_cot_value, count_nro_panels
-from .functions import cf_table, finantial_table, generar_graficas
+from .functions import cf_table, finantial_table, generar_graficas, _safe_div
 from .pdf.quote import build_reporte_pdf
 from .pdf.finantial import build_reporte_pdf_finantial
 
@@ -164,7 +164,7 @@ def compute_finantial_metrics(cfg: dict, ws) -> dict:
         maximo_vector=cfg["parametros_busqueda_flujo_caja"]["maximo_vector_flujo_caja"],
         minimo_vector=cfg["parametros_busqueda_flujo_caja"]["minimo_vector_flujo_caja"],
     )
-    lcoe = 0.0 if df_flujo_caja.empty else float(df_flujo_caja["LCOE"].astype(float).mean())
+    lcoe = _safe_div(sum(df_flujo_caja['Equipamiento'])-sum(df_flujo_caja['OPEX']), sum(df_flujo_caja['Energía']))
     return {"LCOE": lcoe}
 
 

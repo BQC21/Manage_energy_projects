@@ -139,7 +139,7 @@ def cf_table(
     Construye el DataFrame del flujo de caja desde la hoja "FLUJO DE CAJA" del Excel.
     """
     df_flujo = pd.DataFrame(columns=['Año', 'Equipamiento', 'Tarifa', 'OPEX', 
-                                    'Energía', 'Ahorro', 'Flujo Total', 'Flujo Acumulado', 'LCOE'])
+                                    'Energía', 'Ahorro', 'Flujo Total', 'Flujo Acumulado'])
     
     for fila in range(minimo_vector, maximo_vector + 1):
 
@@ -162,7 +162,6 @@ def cf_table(
                 'Ahorro': ahorro,
                 'Flujo Total': flujo_total,
                 'Flujo Acumulado': flujo_acumulado,
-                'LCOE': _safe_div(extraer_entero(equipamiento) - extraer_entero(opex), energia),
             }])
             df_flujo = pd.concat([df_flujo, new_row], ignore_index=True)
 
