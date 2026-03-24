@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getProjectsRequest, updateProjectRequest, deleteProjectRequest } from "../api/projects.api";
+import { getProjectsRequest, updateProjectRequest, deleteProjectRequest, createProjectRequest } from "../api/projects.api";
 import * as helpers from "../helpers/helpers";
 
 // precio de venta
@@ -20,6 +20,8 @@ function formatLCOE(value) {
 }
 
 function CRUD() {
+
+    // -------------------- STATES ----------------------------
     const statuses = ["activo", "culminado", "pausa"];
 
     // File Upload State
@@ -54,7 +56,9 @@ function CRUD() {
     const ENDPOINT_financial = `${BACKEND_BASE}/api/reports/finantial`;
     const ENDPOINT_process = `${BACKEND_BASE}/api/reports/process-project`;
 
-    // File Upload Handlers
+    // -------------------- EVENTS ----------------------------
+
+    // Change Excel File
     const onFileChange = (event) => {
         setExcelFile(event.target.files?.[0] || null);
     };
@@ -84,47 +88,72 @@ function CRUD() {
         }
     };
 
-    const onUpload = () => {
+    // Upload Excel file
+    const onUpload = async () => {
         if (!excelFile) {
             alert("Por favor, selecciona un archivo Excel antes de subir.");
             return;
         }
-        if (!selectedProjectId) {
-            alert("Seleccione un proyecto antes de subir el Excel.");
-            return;
-        }
 
-        // Store the file in state associated with the project
-        setProjectExcelFiles(prev => ({
-            ...prev,
-            [selectedProjectId]: excelFile
-        }));
+        try {
+            let projectIdToUse = selectedProjectId;
 
-        // Process and persist metrics directly in Python server
-        const formData = new FormData();
-        formData.append("excel_file", excelFile, excelFile.name);
-        formData.append("project_id", String(selectedProjectId));
+            if (projectIdToUse == null && projects.length === 0) {
+                const baseProject = {
+                    project: "Proyecto inicial",
+                    LCOE: 0,
+                    price: 0,
+                    nro_panels: 0,
+                    status: "activo",
+                };
 
-        fetch(ENDPOINT_process, {
-            method: "POST",
-            body: formData,
-        })
-        .then((req) => {
-            if (!req.ok) {
-                throw new Error(`${req.statusText}`);
+                const createResponse = await createProjectRequest(baseProject);
+                const createPayload = await createResponse.json();
+
+                if (!createResponse.ok || !createPayload.success || !createPayload.data?.id) {
+                    throw new Error(createPayload.message || "No se pudo crear el proyecto base");
+                }
+
+                projectIdToUse = createPayload.data.id;
+                setSelectedProjectId(projectIdToUse);
+                setProjects((prev) => [createPayload.data, ...prev]);
             }
-            return req.json();
-        })
-        .then((data) => {
+
+            if (projectIdToUse == null) {
+                throw new Error("No hay un proyecto válido para asociar el Excel.");
+            }
+
+            // Store the file in state associated with the project
+            setProjectExcelFiles((prev) => ({
+                ...prev,
+                [projectIdToUse]: excelFile,
+            }));
+
+            // Process and persist metrics directly in Python server
+            const formData = new FormData();
+            formData.append("excel_file", excelFile, excelFile.name);
+            formData.append("project_id", String(projectIdToUse));
+
+            const req = await fetch(ENDPOINT_process, {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!req.ok) {
+                const errPayload = await req.json().catch(() => null);
+                const detail = errPayload?.detail || errPayload?.message || req.statusText;
+                throw new Error(detail);
+            }
+
+            const data = await req.json();
             alert("Excel procesado y proyecto actualizado exitosamente.");
             console.log("Respuesta del servidor:", data);
             setExcelFile(null);
             loadProjects();
-        })
-        .catch((err) => {
+        } catch (err) {
             alert(`Error al subir el archivo: ${err.message}`);
             console.error(err);
-        });
+        }
     };
 
     // PDF Generation Handler
@@ -177,7 +206,7 @@ function CRUD() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // CRUD Operation Handlers
+    // Change status project
     const openStatusModal = (projectId, currentStatus) => {
         const current = (currentStatus || "activo").toLowerCase();
         setStatusModalProjectId(projectId);
@@ -230,6 +259,7 @@ function CRUD() {
         }
     };
 
+    // Delete project
     const handleDelete = async (projectId) => {
         if (!window.confirm('¿Está seguro de que desea eliminar este proyecto?')) {
             return;
@@ -294,7 +324,7 @@ function CRUD() {
 
             {/* Loading State */}
             {loading && (
-                <div className="loading-message">Loading projects...</div>
+                <div className="loading-message">Cargando proyectos...</div>
             )}
 
             {/* Error State */}
@@ -304,7 +334,7 @@ function CRUD() {
 
             {/* Empty State */}
             {!loading && !error && projects.length === 0 && (
-                <div className="empty-message">No projects uploaded yet.</div>
+                <div className="empty-message">No hay proyectos cargados aún.</div>
             )}
 
             {/* Projects Table */}
@@ -313,7 +343,7 @@ function CRUD() {
                     <table className="projects-table">
                         <thead>
                             <tr>
-                                <th>Proyecto</th>
+                                <th>Cliente</th>
                                 <th>Precio de venta</th>
                                 <th>N° paneles</th>
                                 <th>LCOE ($/kWh)</th>
@@ -360,7 +390,7 @@ function CRUD() {
                                             className="btn-secondary"
                                             disabled={busy_quote || !projectExcelFiles[project.id]}
                                             onClick={() => generatePdf(ENDPOINT_quote, setMessage_quote, setMessageType_quote, setBusy_quote, 'reporte_final_quote.pdf', project.id)}>
-                                            Generar PDF
+                                            Abrir PDF
                                         </button>
                                         <div className="status">
                                             {busy_quote && <div className="spinner" aria-hidden="true"></div>}
@@ -373,7 +403,7 @@ function CRUD() {
                                             className="btn-secondary"
                                             disabled={busy_financial || !projectExcelFiles[project.id]}
                                             onClick={() => generatePdf(ENDPOINT_financial, setMessage_financial, setMessageType_financial, setBusy_financial, 'reporte_final_finantial.pdf', project.id)}>
-                                            Generar PDF
+                                            Abrir PDF
                                         </button>
                                         <div className="status">
                                             {busy_financial && <div className="spinner" aria-hidden="true"></div>}

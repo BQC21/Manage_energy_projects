@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon src/index.js",
+    "dev": "nodemon index.js",
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "postinstall": "prisma generate"
@@ -30,6 +30,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://https://github.com/BQC21/Manage_energy_projects.git"
+    "url": "git+https://github.com/BQC21/Manage_energy_projects.git"
   }
 }
