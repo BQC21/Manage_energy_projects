@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { getProjectsRequest, updateProjectRequest, deleteProjectRequest, createProjectRequest } from "../api/projects.api";
 import * as helpers from "../helpers/helpers";
 
+import GRAPHS from "./GRAPHS";
+
 // precio de venta
 function formatCurrency(value) {
     return new Intl.NumberFormat("en-US", {
@@ -548,6 +550,9 @@ function CRUD() {
             </div>
         )}
         {/* Statistics Charts */}
+        {projects.length > 0 && (
+            <GRAPHS projects={projects}/>
+        )}
         </>
     );
 }
