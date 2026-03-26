@@ -27,6 +27,8 @@ export const deleteProjectRequest = (id) =>
         method: "DELETE",
     });
 
+// ----------- Python API Requests -----------
+
 export const processProjectRequest = (formData) =>
     fetch(`${REPORTS_API}/process-project`, {
         method: "POST",
@@ -45,7 +47,7 @@ export const generateQuotePdfRequest = (formData) =>
     });
 
 export const generateFinancialPdfRequest = (formData) =>
-    fetch(`${REPORTS_API}/finantial`, {
+    fetch(`${REPORTS_API}/financial`, {
         method: "POST",
         body: formData,
     });
