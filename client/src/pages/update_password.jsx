@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const UpdatePassword = () => {
+    const { update_password } = useAuth();
+
     const location = useLocation();
     const navigate = useNavigate();
     
@@ -49,7 +51,7 @@ const UpdatePassword = () => {
 
         try {
             const payload = { email: data.email, newPassword: data.newPassword };
-            const result = await AuthProvider.update_password(payload);
+            const result = await update_password(payload);
             if (result.success) {
                 navigate('/login');
             } else {

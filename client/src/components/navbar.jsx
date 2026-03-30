@@ -37,6 +37,9 @@ function Navbar() {
                 <NavLink to="/" className={({ isActive }) => isActive ? 'active' : ''}>
                     PRINCIPAL
                 </NavLink>
+                <NavLink to="/login" className={({ isActive }) => isActive ? 'active' : ''}>
+                    LOGIN
+                </NavLink>
             </nav>
         </header>
     );

@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Validation = () => {
+    const { validation } = useAuth();
+
     const [data, setData] = useState({
         email: '',
     });
@@ -33,7 +35,7 @@ const Validation = () => {
         }
 
         try {
-            const result = await AuthProvider.validation(data);
+            const result = await validation(data);
             if (result.success) {
                 // pasar email al formulario de actualización
                 navigate('/update_password', { state: { email: data.email } });

@@ -1,7 +1,9 @@
 import { Navigate } from 'react-router-dom';
-import { user, loadingAuth } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function ProtectedRoute({ children }) {
+    const { user, loadingAuth } = useAuth();
+
     if (loadingAuth) {
         return <div className="auth-container">Validando sesión...</div>;
     }

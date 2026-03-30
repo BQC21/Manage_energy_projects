@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Login = () => {
+    const { login } = useAuth();
+
     const [credentials, setCredentials] = useState({
         email: '',
         password: '',
@@ -27,7 +29,7 @@ const Login = () => {
         setError('');
         setLoading(true);
         try {
-            const result = await AuthProvider.login(credentials);
+            const result = await login(credentials);
             if (result.success) {
                 navigate('/');
             } else {
