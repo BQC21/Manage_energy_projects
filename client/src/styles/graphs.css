@@ -39,7 +39,7 @@
 }
 
 .lcoe-bar-chart,
-.price-pie-chart {
+.price-bar-chart {
   border: 1px solid #dbe3ee;
   border-radius: 12px;
   padding: 20px;
@@ -50,7 +50,7 @@
 }
 
 .lcoe-bar-chart canvas,
-.price-pie-chart canvas {
+.price-bar-chart canvas {
   width: 100% !important;
   height: 310px !important;
 }
@@ -61,12 +61,12 @@
   }
 
   .lcoe-bar-chart,
-  .price-pie-chart {
+  .price-bar-chart {
     min-height: 300px;
   }
 
   .lcoe-bar-chart canvas,
-  .price-pie-chart canvas {
+  .price-bar-chart canvas {
     height: 260px !important;
   }
 }
