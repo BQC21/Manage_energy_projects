@@ -80,8 +80,8 @@ DEFAULT_CFG: Dict[str, Any] = {
         "column_valor": "C",
         "column_unidad": "D",
         
-        "maximo_vector_parametros_financieros": 2,
-        "minimo_vector_parametros_financieros": 12,
+        "maximo_vector_parametros_financieros": 12,
+        "minimo_vector_parametros_financieros": 2,
     }
 }
 
@@ -150,6 +150,12 @@ def validate_cfg(cfg: Dict[str, Any]) -> None:
 
     _check_range(pb_1, "minimo_vector_EQUIPOS", "maximo_vector_EQUIPOS")
     _check_range(pb_1, "minimo_vector_MO", "maximo_vector_MO")
+
+    pb_fc = cfg.get("parametros_busqueda_flujo_caja", {})
+    _check_range(pb_fc, "minimo_vector_flujo_caja", "maximo_vector_flujo_caja")
+
+    pb_pf = cfg.get("parametros_busqueda_parametros_financieros", {})
+    _check_range(pb_pf, "minimo_vector_parametros_financieros", "maximo_vector_parametros_financieros")
 
 
 def build_config(overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:

@@ -1,5 +1,5 @@
 
-from .reporte_pdf import _styles, _ensure_file, _scale_image, _df_to_table, _kv_table, _footer
+from .reporte_pdf import _styles, _ensure_file, _scale_image, _df_to_table, _kv_table, _footer, _split_df
 from ..functions import construir_gastos, total_cot, cf_table, finantial_table, generar_graficas
 from ..configs import build_config
 from reportlab.lib.pagesizes import A4
@@ -71,18 +71,21 @@ def build_reporte_pdf_finantial(
         "31.875 kWp es una buena inversión. Para ello, se consideran el costo inicial del sistema, los gastos de "
         "mantenimiento y los ahorros que se obtienen al producir energía propia y comprar menos electricidad de la red.", styles["body"]
     ))
-    # story.append(Paragraph("Parámetros principales del proyecto", styles["h1"]))
-    # story.append(Spacer(1, 0.3 * cm))
+    story.append(Paragraph("Parámetros principales del proyecto", styles["h1"]))
+    story.append(Spacer(1, 0.3 * cm))
 
-    # finantial_col_widths = [9*cm, 4*cm, 4*cm]
-    # DF_FINANTIAL_copy = DF_FINANTIAL.copy()
-    # story.append(_df_to_table(DF_FINANTIAL_copy, col_widths=finantial_col_widths))
-    # story.append(Spacer(1, 0.3 * cm))
+    finantial_col_widths = [9*cm, 4*cm, 4*cm]
+    DF_FINANTIAL_copy = DF_FINANTIAL.copy()
+    story.append(_df_to_table(DF_FINANTIAL_copy, col_widths=finantial_col_widths))
+    story.append(Spacer(1, 0.3 * cm))
 
+    story.append(PageBreak())
     story.append(Paragraph("Flujo de caja del proyecto", styles["h1"]))
     story.append(Spacer(1, 0.3 * cm))
 
-    cf_col_widths = [2*cm, 2.5*cm, 2*cm, 2*cm, 2*cm, 2*cm, 2*cm, 3*cm]
+    # Mantiene la tabla dentro del ancho util del A4 y la divide
+    # en bloques para evitar que desaparezca por problemas de layout.
+    cf_col_widths = [1.4 * cm, 2.2 * cm, 1.6 * cm, 1.6 * cm, 2.1 * cm, 2.1 * cm, 2.1 * cm, 2.5 * cm]
     DF_CF_copy = DF_CF.copy()
     story.append(_df_to_table(DF_CF_copy, col_widths=cf_col_widths))
     story.append(Spacer(1, 0.3 * cm))
