@@ -1,0 +1,103 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Header & Navigation
+   ════════════════════════════════════════════════════════════════════════ */
+
+header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border: 0;
+  background: transparent;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  padding: 26px 28px 0;
+}
+
+nav {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px 26px;
+  max-width: 1820px;
+  margin: 0 auto;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.typewriter-container {
+  width: 100%;
+  display: flex;
+  justify-content: flex-start;
+  overflow: hidden;
+  font-size: 34px;
+  font-weight: 800;
+  color: #3b4657;
+}
+
+.typewriter-container h2 {
+  margin: 0;
+  font-size: inherit;
+  letter-spacing: 0.2px;
+}
+
+.nav-link {
+  color: #5c6778;
+  font-weight: 600;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.nav-link.active {
+  background: #ecf1f7;
+  color: #3f4a5b;
+}
+
+@media (max-width: 980px) {
+  header {
+    padding: 16px 14px 0;
+  }
+
+  nav {
+    padding: 12px 14px;
+  }
+
+  .typewriter-container {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 720px) {
+  nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .typewriter-container {
+    width: 100%;
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  header {
+    padding: 12px 8px 0;
+  }
+
+  nav {
+    padding: 10px;
+    gap: 8px;
+  }
+}
