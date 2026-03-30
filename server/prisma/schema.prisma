@@ -10,10 +10,10 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  name      String   @db.VarChar(255)
-  email     String   @unique @db.VarChar(255)
-  password  String   @db.VarChar(255)
+  id         Int      @id @default(autoincrement())
+  name       String   @db.VarChar(255)
+  email      String   @unique @db.VarChar(255)
+  password   String   @db.VarChar(255)
   created_at DateTime @default(now()) @db.Timestamptz(6)
   updated_at DateTime @default(now()) @db.Timestamptz(6)
 
@@ -21,17 +21,17 @@ model User {
 }
 
 model Project {
-  id               Int      @id @default(autoincrement())
-  project          String   @db.VarChar(255)
-  LCOE             Float
-  price            Float
-  nro_panels       Int
-  status           String   @db.VarChar(50)
-  excel_file_path  String?  @db.VarChar(500)
-  pdf_quote        String?  @db.VarChar(500)
-  pdf_finantial    String?  @db.VarChar(500)
-  created_at       DateTime @default(now()) @db.Timestamptz(6)
-  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  id              Int      @id @default(autoincrement())
+  project         String   @db.VarChar(255)
+  time_retorn     Int
+  price           Float
+  nro_panels      Int
+  status          String   @db.VarChar(50)
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
+  excel_file_path String?  @db.VarChar(500)
+  pdf_quote       String?  @db.VarChar(500)
+  pdf_finantial   String?  @db.VarChar(500)
 
   @@map("project")
 }
