@@ -1,18 +1,25 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from '../context/AuthContext.jsx';
 
 const UpdatePassword = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    
     const [data, setData] = useState({
         email: '',
         newPassword: '',
+        confirmNewPassword: '',
     });
+
+    useEffect(() => {
+        if (location.state?.email) {
+            setData((d) => ({ ...d, email: location.state.email }));
+        }
+    }, [location.state?.email]);
 
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
-    const { update_password } = useAuth();
-    const navigate = useNavigate();
 
     // cambiar valores
     const handleChange = (e) => {
@@ -22,7 +29,7 @@ const UpdatePassword = () => {
         });
     };
 
-    // click en Verificar
+    // click en Actualizar
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -31,21 +38,28 @@ const UpdatePassword = () => {
         // Validate passwords match
         if (data.newPassword !== data.confirmNewPassword) {
             setError('Passwords do not match');
+            setLoading(false);
             return;
         }
         if (data.newPassword.length < 8) {
             setError('Password must be at least 8 characters');
+            setLoading(false);
             return;
         }
-        const result = await update_password(data);
 
-        if (result.success) {
-            navigate('/login');
-        } else {
-            setError(result.error);
+        try {
+            const payload = { email: data.email, newPassword: data.newPassword };
+            const result = await AuthProvider.update_password(payload);
+            if (result.success) {
+                navigate('/login');
+            } else {
+                setError(result.error || 'Update failed');
+            }
+        } catch (err) {
+            setError(err.message || 'Unexpected error');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (
@@ -58,8 +72,8 @@ const UpdatePassword = () => {
                 <input
                 type="password"
                 id="password"
-                name="password"
-                value={data.password}
+                name="newPassword"
+                value={data.newPassword}
                 onChange={handleChange}
                 required
                 />
@@ -69,8 +83,8 @@ const UpdatePassword = () => {
                 <input
                 type="password"
                 id="confirmPassword"
-                name="confirmPassword"
-                value={data.confirmPassword}
+                name="confirmNewPassword"
+                value={data.confirmNewPassword}
                 onChange={handleChange}
                 required
                 />

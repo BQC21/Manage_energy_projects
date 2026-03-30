@@ -17,7 +17,7 @@ const app = express();
 app.use(session({
     secret: process.env.SESSION_SECRET || 'tu_clave_secreta_aqui', // Usa .env
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: { 
         secure: false, // Ponlo en true solo si usas HTTPS
         httpOnly: true, 
@@ -28,13 +28,15 @@ app.use(session({
 // Port
 const port = process.env.PORT || 3000;
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
+app.use(cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+}));
 app.use(express.json());
 
 // global middlewares 
 app.use(logger);          
 app.use(successHandler);              
-app.use(isAuthenticated);
 
 // RUTAS
 

@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Configuración base de Axios
 const authApi = axios.create({
-    baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:3000"}/api/auth`,
+    baseURL: `${import.meta.env.VITE_SERVER_API_URL || "http://localhost:3000"}/api/auth`,
     withCredentials: true, // OBLIGATORIO para enviar/recibir cookies de sesión
 });
 
@@ -27,6 +27,10 @@ export const loginRequest = async (credentials) => {
  */
 export const logoutRequest = async () => {
     return await authApi.post("/logout");
+};
+
+export const meRequest = async () => {
+    return await authApi.get("/me");
 };
 
 /**

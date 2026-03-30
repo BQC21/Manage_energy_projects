@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { AuthProvider } from '../context/AuthContext.jsx';
 
 const Validation = () => {
     const [data, setData] = useState({
@@ -10,7 +10,6 @@ const Validation = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { validation } = useAuth();
     const navigate = useNavigate();
 
     // cambiar valores
@@ -32,18 +31,20 @@ const Validation = () => {
             setLoading(false);
             return;
         }
-        // verificar si el usuario existe para permitir actualización de contraseña
-        // ...... Escribir lógica de validación aquí ......
 
-        const result = await validation(data);
-
-        if (result.success) {
-            navigate('/update_password');
-        } else {
-            setError(result.error);
+        try {
+            const result = await AuthProvider.validation(data);
+            if (result.success) {
+                // pasar email al formulario de actualización
+                navigate('/update_password', { state: { email: data.email } });
+            } else {
+                setError(result.error || 'Validation failed');
+            }
+        } catch (err) {
+            setError(err.message || 'Unexpected error');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (

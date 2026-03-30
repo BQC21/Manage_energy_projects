@@ -23,6 +23,7 @@ export const login = async (req, res, next) => {
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return res.status(401).json({ message: "Invalid credentials" });
 
+        req.session.user = { id: user.id, email: user.email };
         res.success({ id: user.id, email: user.email }, "Login successful");
     } catch (err) {
         next(err);
@@ -37,6 +38,17 @@ export const logout = (req, res, next) => {
             res.clearCookie('connect.sid'); // nombre por defecto de cookie de sesión
             res.success(null, "Logout successful");
         });
+    } catch (err) {
+        next(err);
+    }
+};
+
+export const me = async (req, res, next) => {
+    try {
+        if (!req.session?.user) {
+            return res.status(401).json({ message: "Unauthorized: Please log in" });
+        }
+        res.success(req.session.user, "Session active");
     } catch (err) {
         next(err);
     }

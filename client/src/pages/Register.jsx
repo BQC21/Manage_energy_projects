@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { AuthProvider } from '../context/AuthContext.jsx';
 
 const Register = () => {
     const [userData, setuserData] = useState({
@@ -12,7 +12,6 @@ const Register = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { register } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -37,17 +36,19 @@ const Register = () => {
         }
 
         setLoading(true);
-
-        const { confirmPassword: _confirmPassword, ...registerData } = userData;
-        const result = await register(registerData);
-
-        if (result.success) {
-            navigate('/');
-        } else {
-            setError(result.error);
+        try {
+            const { confirmPassword: _confirmPassword, ...registerData } = userData;
+            const result = await AuthProvider.register(registerData);
+            if (result.success) {
+                navigate('/login');
+            } else {
+                setError(result.error || 'Registration failed');
+            }
+        } catch (err) {
+            setError(err.message || 'Unexpected error');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     return (

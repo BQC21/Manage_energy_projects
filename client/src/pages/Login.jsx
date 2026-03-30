@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { AuthProvider } from '../context/AuthContext.jsx';
 
 const Login = () => {
     const [credentials, setCredentials] = useState({
@@ -11,7 +11,6 @@ const Login = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
     const navigate = useNavigate();
 
     // cambiar valores
@@ -27,17 +26,20 @@ const Login = () => {
         e.preventDefault();
         setError('');
         setLoading(true);
-
-        const result = await login(credentials);
-
-        if (result.success) {
-            navigate('/');
-        } else {
-            setError(result.error);
+        try {
+            const result = await AuthProvider.login(credentials);
+            if (result.success) {
+                navigate('/');
+            } else {
+                setError(result.error || 'Login failed');
+            }
+        } catch (err) {
+            setError(err.message || 'Unexpected error');
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
+
 
     return (
     <div className="auth-container">
@@ -71,7 +73,7 @@ const Login = () => {
             </button>
         </form>
         <div className="auth-link">
-            <Link to="/update_password">Olvidé mi contraseña</Link>
+            <Link to="/validation">Olvidé mi contraseña</Link>
         </div>
         <div className="auth-link">
             ¿No tienes una cuenta? <Link to="/register">Regístrate aquí</Link>
