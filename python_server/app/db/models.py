@@ -11,7 +11,7 @@ class Project(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     project: Mapped[str] = mapped_column(String(255), nullable=False)
-    LCOE: Mapped[float] = mapped_column(Float, nullable=False)
+    time_retorn: Mapped[int] = mapped_column(Integer, nullable=False)
     price: Mapped[float] = mapped_column(Float, nullable=False)
     nro_panels: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)

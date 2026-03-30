@@ -199,7 +199,7 @@ async def process_project(
         project.excel_file_path = str(tmp_excel_path)
         project.pdf_quote = str(quote_pdf_path)
         project.pdf_finantial = str(finantial_pdf_path)
-        project.LCOE = float(finantial_metrics["LCOE"])
+        project.time_retorn = int(finantial_metrics["time_retorn"])
         project.nro_panels = int(quote_metrics["nro_panels"])
         project.price = float(quote_metrics["price"])
         db.commit()
@@ -212,7 +212,7 @@ async def process_project(
         "excel_file": str(tmp_excel_path),
         "pdf_quote": str(quote_pdf_path),
         "pdf_finantial": str(finantial_pdf_path),
-        "LCOE": float(finantial_metrics["LCOE"]),
+        "time_retorn": int(finantial_metrics["time_retorn"]),
         "nro_panels": int(quote_metrics["nro_panels"]),
         "price": float(quote_metrics["price"]),
     }
