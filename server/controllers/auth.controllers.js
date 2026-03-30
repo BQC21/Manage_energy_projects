@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs"; // hashea y verifica contraseñas (proteccion al acceso no autorizado)
+import bcrypt from "bcrypt"; // hashea y verifica contraseñas (proteccion al acceso no autorizado)
 import { prisma } from "../db_client/prisma.js";
 
 export const register = async (req, res, next) => {
