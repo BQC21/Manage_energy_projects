@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthProvider } from '../context/AuthContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Register = () => {
+    const { register } = useAuth();
+
     const [userData, setuserData] = useState({
         name: '',
         email: '',
@@ -38,7 +40,7 @@ const Register = () => {
         setLoading(true);
         try {
             const { confirmPassword: _confirmPassword, ...registerData } = userData;
-            const result = await AuthProvider.register(registerData);
+            const result = await register(registerData);
             if (result.success) {
                 navigate('/login');
             } else {
