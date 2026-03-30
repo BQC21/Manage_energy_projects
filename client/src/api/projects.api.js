@@ -50,7 +50,7 @@ export const generateQuotePdfRequest = (formData) =>
     });
 
 export const generateFinancialPdfRequest = (formData) =>
-    fetch(`${REPORTS_API}/financial`, {
+    fetch(`${REPORTS_API}/finantial`, {
         method: "POST",
         body: formData,
     });

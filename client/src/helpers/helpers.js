@@ -23,13 +23,6 @@ export function formatCurrency(value) {
   }).format(value);
 }
 
-export function formatLCOE(value) {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
 export function resolveSelectedProjectId(selectedProjectId, projects) {
   const rows = Array.isArray(projects) ? projects : [];
   if (rows.length === 0) return null;

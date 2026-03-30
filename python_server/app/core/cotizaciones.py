@@ -165,7 +165,11 @@ def compute_finantial_metrics(cfg: dict, ws) -> dict:
         minimo_vector=cfg["parametros_busqueda_flujo_caja"]["minimo_vector_flujo_caja"],
     )
     lcoe = _safe_div(sum(df_flujo_caja['Equipamiento'])-sum(df_flujo_caja['OPEX']), sum(df_flujo_caja['Energía']))
-    return {"LCOE": lcoe}
+    time_retorn = next(
+        (anio for anio, flujo in zip(df_flujo_caja['Año'], df_flujo_caja['Flujo Acumulado']) if flujo >= 0),
+        None
+    )
+    return {"LCOE": lcoe, "time_retorn": time_retorn}
 
 
 def generate_report(

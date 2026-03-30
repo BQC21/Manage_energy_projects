@@ -402,7 +402,7 @@ function CRUD() {
                                 <th>Cliente</th>
                                 <th>Precio de venta</th>
                                 <th>N° paneles</th>
-                                <th>LCOE ($/kWh)</th>
+                                <th>Tiempo de retorno (años)</th>
                                 <th>Estado</th>
                                 <th>Actualizado</th>
                                 <th>Excel</th>
@@ -423,7 +423,7 @@ function CRUD() {
                                         {project.nro_panels ?? project.Nro_panels ?? 0}
                                     </td>
                                     <td>
-                                        {helpers.formatLCOE(project.LCOE ?? project.lcoe ?? 0)}
+                                        {project.time_retorn ?? project.time_retorn ?? 0}
                                     </td>
                                     <td>
                                         <span className="status-badge">
