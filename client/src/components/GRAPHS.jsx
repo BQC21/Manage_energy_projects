@@ -19,7 +19,7 @@ function GRAPHS({ projects = [] }) {
         }
 
         const labels = projects.map((p) => p.project || "Proyecto");
-        const lcoeData = projects.map((p) => Number(p.LCOE ?? p.lcoe ?? 0));
+        const time_returnData = projects.map((p) => Number(p.time_retorn ?? p.Time_retorn ?? 0));
         const priceData = projects.map((p) => Number(p.price ?? p.Price ?? 0));
 
         if (barChartRef.current) barChartRef.current.destroy();
@@ -31,8 +31,8 @@ function GRAPHS({ projects = [] }) {
                 labels,
                 datasets: [
                     {
-                        label: "LCOE por proyecto",
-                        data: lcoeData,
+                        label: "Tiempo de retorno por proyecto",
+                        data: time_returnData,
                         borderWidth: 1,
                         backgroundColor: "rgba(97, 153, 239, 0.45)",
                         borderColor: "rgba(97, 153, 239, 1)",
@@ -41,8 +41,9 @@ function GRAPHS({ projects = [] }) {
             },
             options: {
                 responsive: true,
+                indexAxis: "y",
                 scales: {
-                    y: { beginAtZero: true },
+                    x: { beginAtZero: true },
                 },
             },
         });
@@ -99,7 +100,7 @@ function GRAPHS({ projects = [] }) {
                 </label>
             </div>
             <div className="charts-grid">
-                <div className="lcoe-bar-chart">
+                <div className="lcoe-bar-chart"> {/* Time return Bar Chart */}
                     <canvas ref={barCanvasRef} />
                 </div>
                 <div className="price-bar-chart">
