@@ -237,12 +237,13 @@ def count_nro_panels(df_equipos):
         return 0
 
     panel_rows = df_equipos[
-        df_equipos["Descripción"].astype(str).str.contains("panel solar", case=False, na=False)
+        df_equipos["Descripción"].astype(str).str.contains("panel solar|modulo|módulo", case=False, na=False)
     ]
     if panel_rows.empty:
         return 0
 
     total = panel_rows["Cantidad"].apply(extraer_entero).sum()
+    # print("Total paneles solares:", total)
     return int(round(total))
 
 def cf_table(
