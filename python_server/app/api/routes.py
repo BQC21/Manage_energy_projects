@@ -6,7 +6,7 @@ import uuid
 import tempfile
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Dict, Literal, Optional, Sequence
 
 from fastapi import APIRouter, BackgroundTasks, File
 from fastapi import Form, HTTPException, Request, UploadFile
@@ -16,12 +16,43 @@ from sqlalchemy import select
 
 from ..core.configs import build_config
 from ..core.cotizaciones import generate_report, compute_finantial_metrics, compute_quote_metrics
+from ..core.excel_local import detect_table_headers, resolve_named_values
 from ..db.models import Project
 from ..db.session import SessionLocal
 
-
 router = APIRouter(tags=["reports"])
 ReportType = Literal["quote", "finantial"]
+
+
+QUOTE_FIELD_ALIASES: Dict[str, Sequence[str]] = {
+    "cliente": ["cliente", "razon social", "empresa"],
+    "ruc_dni": ["ruc", "dni", "ruc/dni", "ruc dni"],
+    "proyecto": ["proyecto", "nombre del proyecto"],
+    "lugar": ["lugar", "ubicacion", "direccion", "dirección"],
+    "atencion": ["atencion", "atención", "contacto", "responsable"],
+}
+
+QUOTE_TABLE_ALIASES: Dict[str, Sequence[str]] = {
+    "descripcion": ["descripcion", "descripción"],
+    "unidad": ["unidad", "und"],
+    "cantidad": ["cantidad", "cant"],
+}
+
+FINANCIAL_FLOW_TABLE_ALIASES: Dict[str, Sequence[str]] = {
+    "anio": ["año", "anio"],
+    "equipamiento": ["equipamiento", "inversion", "equipos"],
+    "tarifa": ["tarifa"],
+    "opex": ["opex"],
+    "ahorro": ["ahorro"],
+    "flujo_total": ["flujo total"],
+    "flujo_acumulado": ["flujo acumulado"],
+}
+
+FINANCIAL_PARAMS_TABLE_ALIASES: Dict[str, Sequence[str]] = {
+    "parametro": ["parametro", "parámetro"],
+    "valor": ["valor"],
+    "unidad": ["unidad"],
+}
 
 
 def _project_root() -> Path:
@@ -55,13 +86,25 @@ def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
     ws_finanzas = workbook["FLUJO DE CAJA"]
     datos_cfg = cfg["datos_informe"]
 
-    dict_datos = {
+    fallback_dict_datos = {
         "cliente": ws_cotizacion[f"{datos_cfg['column_cliente']}{datos_cfg['row_cliente']}"].value,
         "ruc_dni": ws_cotizacion[f"{datos_cfg['column_RUC']}{datos_cfg['row_RUC']}"].value,
         "proyecto": ws_cotizacion[f"{datos_cfg['column_Proyecto']}{datos_cfg['row_Proyecto']}"].value,
-        "fecha": datos_cfg["Fecha"],
         "lugar": ws_cotizacion[f"{datos_cfg['column_Lugar']}{datos_cfg['row_Lugar']}"].value,
         "atencion": ws_cotizacion[f"{datos_cfg['column_Atencion']}{datos_cfg['row_Atencion']}"].value,
+    }
+    dict_datos = resolve_named_values(
+        ws_cotizacion,
+        QUOTE_FIELD_ALIASES,
+        fallback=fallback_dict_datos,
+    )
+    dict_datos["fecha"] = datos_cfg["Fecha"]
+
+    dynamic_layout = {
+        "quote_fields": dict_datos,
+        "quote_table": detect_table_headers(ws_cotizacion, QUOTE_TABLE_ALIASES),
+        "financial_flow_table": detect_table_headers(ws_finanzas, FINANCIAL_FLOW_TABLE_ALIASES),
+        "financial_params_table": detect_table_headers(ws_finanzas, FINANCIAL_PARAMS_TABLE_ALIASES),
     }
 
     assets = {
@@ -73,6 +116,7 @@ def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
         "ws_cotizacion": ws_cotizacion,
         "ws_finanzas": ws_finanzas,
         "dict_datos": dict_datos,
+        "dynamic_layout": dynamic_layout,
         "assets": assets,
     }
 
@@ -175,6 +219,7 @@ async def process_project(
         dict_datos=report_context["dict_datos"],
         assets=report_context["assets"],
         output_pdf_path=quote_pdf,
+        dynamic_layout=report_context["dynamic_layout"],
     )
     finantial_pdf_path = generate_report(
         "finantial",
@@ -183,10 +228,19 @@ async def process_project(
         dict_datos=report_context["dict_datos"],
         assets=report_context["assets"],
         output_pdf_path=finantial_pdf,
+        dynamic_layout=report_context["dynamic_layout"],
     )
 
-    quote_metrics = compute_quote_metrics(cfg, report_context["ws_cotizacion"])
-    finantial_metrics = compute_finantial_metrics(cfg, report_context["ws_finanzas"])
+    quote_metrics = compute_quote_metrics(
+        cfg,
+        report_context["ws_cotizacion"],
+        dynamic_layout=report_context["dynamic_layout"],
+    )
+    finantial_metrics = compute_finantial_metrics(
+        cfg,
+        report_context["ws_finanzas"],
+        dynamic_layout=report_context["dynamic_layout"],
+    )
     if not quote_pdf_path.exists() or not finantial_pdf_path.exists():
         raise HTTPException(status_code=500, detail="No se generaron los PDFs esperados.")
 
@@ -267,6 +321,7 @@ async def create_report(
             dict_datos=report_context["dict_datos"],
             assets=report_context["assets"],
             output_pdf_path=out_pdf,
+            dynamic_layout=report_context["dynamic_layout"],
         )
     else:
         pdf_path = generate_report(
@@ -276,6 +331,7 @@ async def create_report(
             dict_datos=report_context["dict_datos"],
             assets=report_context["assets"],
             output_pdf_path=out_pdf,
+            dynamic_layout=report_context["dynamic_layout"],
         )
 
     if not pdf_path.exists():

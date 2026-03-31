@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import warnings
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union
 
 from openpyxl import load_workbook
 
@@ -47,6 +47,7 @@ def _build_quote_pdf(
     assets: dict,
     root_path: Path,
     output_pdf_path: Path,
+    dynamic_layout: Optional[Dict[str, Any]] = None,
 ) -> Path:
     df_gastos, df_equipos, df_principal = construir_gastos(
         ws,
@@ -61,6 +62,7 @@ def _build_quote_pdf(
         cfg["parametros_busqueda_BUDGET"]["row_precio_EQUIPOS"],
         cfg["parametros_busqueda_BUDGET"]["column_precio_MO"],
         cfg["parametros_busqueda_BUDGET"]["row_precio_MO"],
+        dynamic_layout=dynamic_layout,
     )
 
     resumen = total_cot(df_principal)
@@ -81,7 +83,11 @@ def _build_quote_pdf(
     return output_pdf_path
 
 
-def compute_quote_metrics(cfg: dict, ws) -> dict:
+def compute_quote_metrics(
+    cfg: dict,
+    ws,
+    dynamic_layout: Optional[Dict[str, Any]] = None,
+) -> dict:
     _, df_equipos, df_principal = construir_gastos(
         ws,
         cfg["parametros_busqueda_BUDGET"]["minimo_vector_EQUIPOS"],
@@ -95,6 +101,7 @@ def compute_quote_metrics(cfg: dict, ws) -> dict:
         cfg["parametros_busqueda_BUDGET"]["row_precio_EQUIPOS"],
         cfg["parametros_busqueda_BUDGET"]["column_precio_MO"],
         cfg["parametros_busqueda_BUDGET"]["row_precio_MO"],
+        dynamic_layout=dynamic_layout,
     )
     resumen = total_cot(df_principal)
     return {
@@ -110,6 +117,7 @@ def _build_finantial_pdf(
     assets: dict,
     root_path: Path,
     output_pdf_path: Path,
+    dynamic_layout: Optional[Dict[str, Any]] = None,
 ) -> Path:
     df_flujo_caja = cf_table(
         ws,
@@ -123,6 +131,7 @@ def _build_finantial_pdf(
         column_cf_flujo_acumulado=cfg["parametros_busqueda_flujo_caja"]["column_flujo_acumulado"],
         maximo_vector=cfg["parametros_busqueda_flujo_caja"]["maximo_vector_flujo_caja"],
         minimo_vector=cfg["parametros_busqueda_flujo_caja"]["minimo_vector_flujo_caja"],
+        dynamic_layout=dynamic_layout,
     )
 
     df_finantial_params = finantial_table(
@@ -132,6 +141,7 @@ def _build_finantial_pdf(
         column_cf_unidad=cfg["parametros_busqueda_parametros_financieros"]["column_unidad"],
         maximo_vector=cfg["parametros_busqueda_parametros_financieros"]["maximo_vector_parametros_financieros"],
         minimo_vector=cfg["parametros_busqueda_parametros_financieros"]["minimo_vector_parametros_financieros"],
+        dynamic_layout=dynamic_layout,
     )
 
     output_files = generar_graficas(df_flujo_caja)
@@ -150,7 +160,11 @@ def _build_finantial_pdf(
     return output_pdf_path
 
 
-def compute_finantial_metrics(cfg: dict, ws) -> dict:
+def compute_finantial_metrics(
+    cfg: dict,
+    ws,
+    dynamic_layout: Optional[Dict[str, Any]] = None,
+) -> dict:
     df_flujo_caja = cf_table(
         ws,
         column_cf_anio=cfg["parametros_busqueda_flujo_caja"]["column_anio"],
@@ -163,11 +177,26 @@ def compute_finantial_metrics(cfg: dict, ws) -> dict:
         column_cf_flujo_acumulado=cfg["parametros_busqueda_flujo_caja"]["column_flujo_acumulado"],
         maximo_vector=cfg["parametros_busqueda_flujo_caja"]["maximo_vector_flujo_caja"],
         minimo_vector=cfg["parametros_busqueda_flujo_caja"]["minimo_vector_flujo_caja"],
+        dynamic_layout=dynamic_layout,
     )
-    lcoe = _safe_div(sum(df_flujo_caja['Equipamiento'])-sum(df_flujo_caja['OPEX']), sum(df_flujo_caja['Energía']))
+
+    if df_flujo_caja.empty:
+        return {"LCOE": 0.0, "time_retorn": None}
+
+    lcoe = _safe_div(
+        df_flujo_caja["Equipamiento"].sum() - df_flujo_caja["OPEX"].sum(),
+        df_flujo_caja["Energía"].sum(),
+    )
+    valid_return_rows = df_flujo_caja[
+        df_flujo_caja["Año"].notna() & df_flujo_caja["Flujo Acumulado"].notna()
+    ]
     time_retorn = next(
-        (anio for anio, flujo in zip(df_flujo_caja['Año'], df_flujo_caja['Flujo Acumulado']) if flujo >= 0),
-        None
+        (
+            int(anio) if float(anio).is_integer() else float(anio)
+            for anio, flujo in zip(valid_return_rows["Año"], valid_return_rows["Flujo Acumulado"])
+            if flujo >= 0
+        ),
+        None,
     )
     return {"LCOE": lcoe, "time_retorn": time_retorn}
 
@@ -179,6 +208,7 @@ def generate_report(
     dict_datos: dict,
     assets: dict,
     output_pdf_path: Optional[Union[str, Path]] = None,
+    dynamic_layout: Optional[Dict[str, Any]] = None,
 ) -> Path:
     if ws is None:
         if report_type == "quote":
@@ -189,9 +219,25 @@ def generate_report(
     output_path = _resolve_output_pdf_path(root_path, output_pdf_path)
 
     if report_type == "quote":
-        return _build_quote_pdf(CFG, ws, dict_datos, assets, root_path, output_path)
+        return _build_quote_pdf(
+            CFG,
+            ws,
+            dict_datos,
+            assets,
+            root_path,
+            output_path,
+            dynamic_layout=dynamic_layout,
+        )
     if report_type == "finantial":
-        return _build_finantial_pdf(CFG, ws, dict_datos, assets, root_path, output_path)
+        return _build_finantial_pdf(
+            CFG,
+            ws,
+            dict_datos,
+            assets,
+            root_path,
+            output_path,
+            dynamic_layout=dynamic_layout,
+        )
 
     raise ValueError(f"Tipo de reporte no soportado: {report_type}")
 

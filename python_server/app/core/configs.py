@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Dict
 from datetime import date
 import re
@@ -17,6 +15,7 @@ DEFAULT_CFG: Dict[str, Any] = {
     },
 
     "parametros_busqueda_BUDGET": {
+        # Fallback por coordenadas fijas si la detección dinámica no ubica el bloque.
         "column_precio_EQUIPOS": "G",
         "row_precio_EQUIPOS": 15,
         "column_precio_MO": "G",
@@ -37,6 +36,7 @@ DEFAULT_CFG: Dict[str, Any] = {
         "_%perdida": 0.4,
         "plazo_entrega": 1,
 
+        # Fallback por coordenadas fijas si la detección semántica no ubica la etiqueta.
         "column_cliente": "E",
         "row_cliente": 9,
 
@@ -62,6 +62,7 @@ DEFAULT_CFG: Dict[str, Any] = {
     },
 
     "parametros_busqueda_flujo_caja" : {
+        # Fallback por coordenadas fijas si la detección dinámica no ubica la tabla.
         "column_anio": "H",
         "column_equipamiento": "I",
         "column_tarifa": "J",
@@ -76,12 +77,42 @@ DEFAULT_CFG: Dict[str, Any] = {
     },
 
     "parametros_busqueda_parametros_financieros" : {
+        # Fallback por coordenadas fijas si la detección dinámica no ubica la tabla.
         "column_parametro": "B",
         "column_valor": "C",
         "column_unidad": "D",
         
         "maximo_vector_parametros_financieros": 12,
         "minimo_vector_parametros_financieros": 2,
+    },
+
+    "excel_semantics": {
+        "quote_fields": {
+            "cliente": ["cliente", "razon social", "empresa"],
+            "ruc_dni": ["ruc", "dni", "ruc/dni", "ruc dni"],
+            "proyecto": ["proyecto", "nombre del proyecto"],
+            "lugar": ["lugar", "ubicacion", "direccion", "dirección"],
+            "atencion": ["atencion", "atención", "contacto", "responsable"],
+        },
+        "quote_table_headers": {
+            "descripcion": ["descripcion", "descripción"],
+            "unidad": ["unidad", "und"],
+            "cantidad": ["cantidad", "cant"],
+        },
+        "financial_flow_headers": {
+            "anio": ["año", "anio"],
+            "equipamiento": ["equipamiento", "inversion", "equipos"],
+            "tarifa": ["tarifa"],
+            "opex": ["opex"],
+            "ahorro": ["ahorro"],
+            "flujo_total": ["flujo total"],
+            "flujo_acumulado": ["flujo acumulado"],
+        },
+        "financial_param_headers": {
+            "parametro": ["parametro", "parámetro"],
+            "valor": ["valor"],
+            "unidad": ["unidad"],
+        },
     }
 }
 
@@ -122,6 +153,21 @@ def normalize_cfg(cfg: Dict[str, Any]) -> Dict[str, Any]:
             di[key] = val.strip()
     cfg["datos_informe"] = di
 
+    semantics = cfg.get("excel_semantics", {})
+    for section_name, section_values in list(semantics.items()):
+        if not isinstance(section_values, dict):
+            continue
+        normalized_section: Dict[str, Any] = {}
+        for key, aliases in section_values.items():
+            if isinstance(aliases, list):
+                normalized_section[key] = [
+                    alias.strip() for alias in aliases if isinstance(alias, str) and alias.strip()
+                ]
+            else:
+                normalized_section[key] = aliases
+        semantics[section_name] = normalized_section
+    cfg["excel_semantics"] = semantics
+
     return cfg
 
 
@@ -156,6 +202,18 @@ def validate_cfg(cfg: Dict[str, Any]) -> None:
 
     pb_pf = cfg.get("parametros_busqueda_parametros_financieros", {})
     _check_range(pb_pf, "minimo_vector_parametros_financieros", "maximo_vector_parametros_financieros")
+
+    semantics = cfg.get("excel_semantics", {})
+    for section_name, section_values in semantics.items():
+        if not isinstance(section_values, dict):
+            raise ValueError(f"CFG.excel_semantics.{section_name} debe ser un dict.")
+        for key, aliases in section_values.items():
+            if not isinstance(aliases, list) or not aliases:
+                raise ValueError(f"CFG.excel_semantics.{section_name}.{key} debe ser una lista no vacía.")
+            if not all(isinstance(alias, str) and alias.strip() for alias in aliases):
+                raise ValueError(
+                    f"CFG.excel_semantics.{section_name}.{key} solo debe contener strings no vacíos."
+                )
 
 
 def build_config(overrides: Dict[str, Any] | None = None) -> Dict[str, Any]:
