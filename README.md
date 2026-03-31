@@ -180,6 +180,7 @@ export const prisma = new PrismaClient();
 ```bash
 cd server
 npm install
+cd prisma
 npm run generate
 npm run dev
 ```
@@ -225,11 +226,8 @@ Open `http://localhost:5173` in the browser.
 ## Workflow
 
 1. **UI Interaction**: The user performs actions in the React client.
-
 2. **Data Management**: Validation and CRUD requests are sent to the Express server.
-
 3. **Processing**: Heavy-duty scraping and document generation tasks are delegated to FastAPI.
-
 4. **Persistence**: Data is validated and queried in the PostgreSQL data layer.
 
 ---
