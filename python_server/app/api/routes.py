@@ -66,10 +66,17 @@ def _normalize_sheet_name(name: str) -> str:
 
 def _find_sheet_by_aliases(sheetnames: Sequence[str], aliases: Sequence[str]) -> Optional[str]:
     normalized_aliases = [_normalize_sheet_name(alias) for alias in aliases]
+
+    # Primero, prioriza coincidencias exactas para evitar elegir hojas como
+    # "PRINT FINANCIERO" cuando también existe la hoja real "FLUJO DE CAJA".
     for sheet in sheetnames:
         normalized_sheet = _normalize_sheet_name(sheet)
         if normalized_sheet in normalized_aliases:
             return sheet
+
+    # Luego, aplica una coincidencia más flexible solo como fallback.
+    for sheet in sheetnames:
+        normalized_sheet = _normalize_sheet_name(sheet)
         if any(alias in normalized_sheet or normalized_sheet in alias for alias in normalized_aliases):
             return sheet
     return None

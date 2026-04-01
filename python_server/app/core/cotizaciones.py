@@ -143,6 +143,7 @@ def _build_finantial_pdf(
         minimo_vector=cfg["parametros_busqueda_parametros_financieros"]["minimo_vector_parametros_financieros"],
         dynamic_layout=dynamic_layout,
     )
+    print(df_finantial_params)
 
     output_files = generar_graficas(df_flujo_caja)
 
