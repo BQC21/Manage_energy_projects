@@ -181,7 +181,7 @@ def compute_finantial_metrics(
     )
 
     if df_flujo_caja.empty:
-        return {"LCOE": 0.0, "time_retorn": None}
+        return {"LCOE": 0.0, "time_retorn": 0.0}
 
     lcoe = _safe_div(
         df_flujo_caja["Equipamiento"].sum() - df_flujo_caja["OPEX"].sum(),
@@ -196,7 +196,7 @@ def compute_finantial_metrics(
             for anio, flujo in zip(valid_return_rows["Año"], valid_return_rows["Flujo Acumulado"])
             if flujo >= 0
         ),
-        None,
+        0,
     )
     return {"LCOE": lcoe, "time_retorn": time_retorn}
 
@@ -269,7 +269,7 @@ if __name__ == "__main__":
 
     wb1 = load_workbook(Budget_File, data_only=True)
     ws_cotizacion = wb1["COTIZACIÓN"]
-    ws_finanzas = wb1["FLUJO DE CAJA"]
+    ws_finanzas = wb1["FLUJO DE CAJA" if "FLUJO DE CAJA" in wb1.sheetnames else "ANÁLISIS FINANCIERO"]
 
     ### Declarar datos del reporte de cotizacion
     dict_datos = {

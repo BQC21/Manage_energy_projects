@@ -87,13 +87,13 @@ function CRUD() {
         }
 
         try {
-            // Evita enviar IDs obsoletos al backend (causa "Project not found").
-            let projectIdToUse = helpers.resolveSelectedProjectId(selectedProjectId, projects);
+            const shouldCreateNewProject = true; // evita la sobrescritura de proyectos existentes al subir un nuevo Excel
+            let projectIdToUse = shouldCreateNewProject ? null : helpers.resolveSelectedProjectId(selectedProjectId, projects);
 
             if (projectIdToUse == null) {
                 const baseProject = {
-                    project: "Proyecto inicial",
-                    LCOE: 0,
+                    project: "Proyecto",
+                    time_retorn: 0,
                     price: 0,
                     nro_panels: 0,
                     status: "activo",

@@ -5,6 +5,8 @@ import json
 import uuid
 import tempfile
 import shutil
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Sequence
 
@@ -41,9 +43,9 @@ QUOTE_TABLE_ALIASES: Dict[str, Sequence[str]] = {
 FINANCIAL_FLOW_TABLE_ALIASES: Dict[str, Sequence[str]] = {
     "anio": ["año", "anio"],
     "equipamiento": ["equipamiento", "inversion", "equipos"],
-    "tarifa": ["tarifa"],
-    "opex": ["opex"],
-    "ahorro": ["ahorro"],
+    "tarifa": ["tarifa", "Tarifa del cliente"],
+    "opex": ["opex", "O&M"],
+    "ahorro": ["ahorro", "ahorro en la facturación"],
     "flujo_total": ["flujo total"],
     "flujo_acumulado": ["flujo acumulado"],
 }
@@ -53,6 +55,33 @@ FINANCIAL_PARAMS_TABLE_ALIASES: Dict[str, Sequence[str]] = {
     "valor": ["valor"],
     "unidad": ["unidad"],
 }
+
+
+def _normalize_sheet_name(name: str) -> str:
+    normalized = unicodedata.normalize("NFKD", name)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    normalized = re.sub(r"[^a-zA-Z0-9]+", " ", normalized).strip().lower()
+    return re.sub(r"\s+", " ", normalized)
+
+
+def _find_sheet_by_aliases(sheetnames: Sequence[str], aliases: Sequence[str]) -> Optional[str]:
+    normalized_aliases = [_normalize_sheet_name(alias) for alias in aliases]
+    for sheet in sheetnames:
+        normalized_sheet = _normalize_sheet_name(sheet)
+        if normalized_sheet in normalized_aliases:
+            return sheet
+        if any(alias in normalized_sheet or normalized_sheet in alias for alias in normalized_aliases):
+            return sheet
+    return None
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _project_root() -> Path:
@@ -87,16 +116,48 @@ def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"No se pudo abrir el Excel cargado: {exc}") from exc
 
-    required_sheets = {"COTIZACIÓN", "FLUJO DE CAJA"}
-    missing_sheets = sorted(required_sheets.difference(workbook.sheetnames))
+    sheet_aliases = {
+        "cotizacion": [
+            "COTIZACIÓN",
+            "COTIZACION",
+            "COTIZACIONES",
+            "PRESUPUESTO",
+            "PROPUESTA ECONOMICA",
+        ],
+        "finanzas": [
+            "FLUJO DE CAJA",
+            "FLUJO CAJA",
+            "ANÁLISIS FINANCIERO",
+            "ANALISIS FINANCIERO",
+            "FINANZAS",
+            "FINANCIERO",
+            "CASH FLOW",
+        ],
+    }
+
+    cotizacion_sheet_name = _find_sheet_by_aliases(workbook.sheetnames, sheet_aliases["cotizacion"])
+    finanzas_sheet_name = _find_sheet_by_aliases(workbook.sheetnames, sheet_aliases["finanzas"])
+
+    missing_sheets = []
+    if not cotizacion_sheet_name:
+        missing_sheets.append("COTIZACIÓN")
+    if not finanzas_sheet_name:
+        missing_sheets.append("FLUJO DE CAJA / ANÁLISIS FINANCIERO")
+
     if missing_sheets:
         raise HTTPException(
             status_code=400,
             detail=f"Faltan hojas requeridas en el Excel: {', '.join(missing_sheets)}",
         )
 
-    ws_cotizacion = workbook["COTIZACIÓN"]
-    ws_finanzas = workbook["FLUJO DE CAJA"]
+    if cotizacion_sheet_name is None or finanzas_sheet_name is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Faltan hojas requeridas en el Excel",
+        )
+
+    ws_cotizacion = workbook[cotizacion_sheet_name]
+    ws_finanzas = workbook[finanzas_sheet_name]
     datos_cfg = cfg["datos_informe"]
 
     fallback_dict_datos = {
@@ -280,6 +341,8 @@ async def process_project(
     if not quote_pdf_path.exists() or not finantial_pdf_path.exists():
         raise HTTPException(status_code=500, detail="No se generaron los PDFs esperados.")
 
+    time_retorn = _safe_int(finantial_metrics.get("time_retorn"))
+
     db = SessionLocal()
     try:
         project = db.execute(select(Project).where(Project.id == project_id)).scalar_one_or_none()
@@ -289,7 +352,7 @@ async def process_project(
         project.excel_file_path = str(tmp_excel_path)
         project.pdf_quote = str(quote_pdf_path)
         project.pdf_finantial = str(finantial_pdf_path)
-        project.time_retorn = int(finantial_metrics["time_retorn"])
+        project.time_retorn = time_retorn
         project.nro_panels = int(quote_metrics["nro_panels"])
         project.price = float(quote_metrics["price"])
         db.commit()
@@ -302,7 +365,7 @@ async def process_project(
         "excel_file": str(tmp_excel_path),
         "pdf_quote": str(quote_pdf_path),
         "pdf_finantial": str(finantial_pdf_path),
-        "time_retorn": int(finantial_metrics["time_retorn"]),
+        "time_retorn": time_retorn,
         "nro_panels": int(quote_metrics["nro_panels"]),
         "price": float(quote_metrics["price"]),
     }
