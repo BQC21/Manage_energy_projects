@@ -8,7 +8,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Sequence
 
-from fastapi import APIRouter, BackgroundTasks, File
+from fastapi import APIRouter, BackgroundTasks, Query, File
 from fastapi import Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
@@ -63,6 +63,19 @@ def _project_root() -> Path:
     """
     # routes.py -> api/ -> app/ -> backend/ -> repo/
     return Path(__file__).resolve().parents[3]
+
+
+def _project_storage_dir(project_id: int) -> Path:
+    storage_dir = _project_root() / "python_server" / "storage" / "projects" / str(project_id)
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    return storage_dir
+
+
+def _create_temp_workspace(background_tasks: BackgroundTasks) -> Path:
+    temp_dir = tempfile.mkdtemp(prefix="cotizador_")
+    temp_dir_path = Path(temp_dir)
+    background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
+    return temp_dir_path
 
 
 def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
@@ -147,13 +160,11 @@ def _parse_overrides(report_type: ReportType, overrides_json: Optional[str]) -> 
         raise HTTPException(status_code=400, detail=f"overrides_json inválido: {exc}") from exc
 
 
-def _save_uploaded_excel(background_tasks: BackgroundTasks, filename: str) -> tuple[Path, Path]:
-    temp_dir = tempfile.mkdtemp(prefix="cotizador_")
-    temp_dir_path = Path(temp_dir)
-    background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
-
-    tmp_excel_path = temp_dir_path / filename
-    return temp_dir_path, tmp_excel_path
+def _save_uploaded_excel(project_id: int, filename: str) -> tuple[Path, Path]:
+    project_dir = _project_storage_dir(project_id)
+    excel_filename = Path(filename).name or "uploaded.xlsx"
+    tmp_excel_path = project_dir / excel_filename
+    return project_dir, tmp_excel_path
 
 
 def _build_merged_overrides(root_path: Path, excel_path: Path, overrides: Dict[str, Any]) -> Dict[str, Any]:
@@ -179,10 +190,35 @@ def _build_response_filename(report_type: ReportType) -> str:
         return "reporte_final.pdf"
     return "reporte_finantial.pdf"
 
+@router.get("/reports/download-excel")
+async def download_excel(project_id: int = Query(...)):
+    db = SessionLocal()
+    try:
+        project = db.execute(
+            select(Project).where(Project.id == project_id)
+        ).scalar_one_or_none()
+
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        if not project.excel_file_path:
+            raise HTTPException(status_code=404, detail="El proyecto no tiene un Excel asociado")
+
+        excel_path = Path(project.excel_file_path)
+
+        if not excel_path.exists() or not excel_path.is_file():
+            raise HTTPException(status_code=404, detail="El archivo Excel no existe en el servidor")
+
+        return FileResponse(
+            path=str(excel_path),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=excel_path.name,
+        )
+    finally:
+        db.close()
 
 @router.post("/reports/process-project")
 async def process_project(
-    background_tasks: BackgroundTasks,
     project_id: int = Form(...),
     excel_file: UploadFile = File(...),
     overrides_json: Optional[str] = Form(None),
@@ -200,7 +236,7 @@ async def process_project(
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"overrides_json inválido: {exc}") from exc
 
-    temp_dir_path, tmp_excel_path = _save_uploaded_excel(background_tasks, filename)
+    project_dir, tmp_excel_path = _save_uploaded_excel(project_id, filename)
     contents = await excel_file.read()
     tmp_excel_path.write_bytes(contents)
 
@@ -209,8 +245,8 @@ async def process_project(
     report_context = _build_report_context(cfg)
 
     request_id = uuid.uuid4().hex
-    quote_pdf = temp_dir_path / f"quote_{request_id}.pdf"
-    finantial_pdf = temp_dir_path / f"finantial_{request_id}.pdf"
+    quote_pdf = project_dir / f"quote_{request_id}.pdf"
+    finantial_pdf = project_dir / f"finantial_{request_id}.pdf"
 
     quote_pdf_path = generate_report(
         "quote",
@@ -301,7 +337,8 @@ async def create_report(
     root_path = _project_root()
     overrides = _parse_overrides(report_type, overrides_json)
 
-    temp_dir_path, tmp_excel_path = _save_uploaded_excel(background_tasks, filename)
+    temp_dir_path = _create_temp_workspace(background_tasks)
+    tmp_excel_path = temp_dir_path / Path(filename).name
 
     contents = await excel_file.read()
     tmp_excel_path.write_bytes(contents)
