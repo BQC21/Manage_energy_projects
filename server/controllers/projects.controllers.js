@@ -1,7 +1,7 @@
 import { prisma } from "../db_client/prisma.js";
 
-const REQUIRED_FIELDS = ["project", "LCOE", "price", "nro_panels", "status"];
-const UPDATABLE_FIELDS = ["project", "LCOE", "price", "nro_panels", "status", "excel_file_path", "pdf_quote", "pdf_finantial"];
+const REQUIRED_FIELDS = ["project", "time_retorn", "price", "nro_panels", "status"];
+const UPDATABLE_FIELDS = ["project", "time_retorn", "price", "nro_panels", "status", "excel_file_path", "pdf_quote", "pdf_finantial"];
 
 // validate project body for create and update
 function validateProjectBody(body) {
@@ -12,8 +12,8 @@ function validateProjectBody(body) {
         return err;
     }
 
-    if (typeof body.LCOE !== "number" || body.LCOE < 0) {
-        const err = new Error("LCOE must be a positive number");
+    if (typeof body.time_retorn !== "number" || body.time_retorn < 0) {
+        const err = new Error("Time_retorn must be a positive number");
         err.statusCode = 400;
         return err;
     }
@@ -46,8 +46,8 @@ function validatePartialProjectBody(body) {
         return err;
     }
 
-    if (body.LCOE !== undefined && (typeof body.LCOE !== "number" || body.LCOE < 0)) {
-        const err = new Error("LCOE must be a positive number");
+    if (body.time_retorn !== undefined && (typeof body.time_retorn !== "number" || body.time_retorn < 0)) {
+        const err = new Error("Time_retorn must be a positive number");
         err.statusCode = 400;
         return err;
     }

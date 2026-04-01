@@ -57,6 +57,14 @@ def build_reporte_pdf_finantial(
     )
 
     story: List[Any] = []
+    plant_capacity_kwp = 0.0
+    if not DF_FINANTIAL.empty and "Valor" in DF_FINANTIAL.columns:
+        first_value = DF_FINANTIAL["Valor"].iloc[0]
+        if first_value is not None:
+            try:
+                plant_capacity_kwp = float(first_value)
+            except (TypeError, ValueError):
+                plant_capacity_kwp = 0.0
 
     # ------------------------------------------------
     # 1) PORTADA
@@ -68,7 +76,7 @@ def build_reporte_pdf_finantial(
     story.append(Paragraph(
         f"Estimados de la empresa <b>{dict_datos['cliente']}</b> :<br/><br/>"
         "Este análisis financiero tiene como objetivo mostrar si la instalación de un sistema solar fotovoltaico de "
-        "31.875 kWp es una buena inversión. Para ello, se consideran el costo inicial del sistema, los gastos de "
+        f"{int(plant_capacity_kwp) if plant_capacity_kwp//1000 == 0.0 else plant_capacity_kwp:.3f} kWp es una buena inversión. Para ello, se consideran el costo inicial del sistema, los gastos de "
         "mantenimiento y los ahorros que se obtienen al producir energía propia y comprar menos electricidad de la red.", styles["body"]
     ))
     story.append(Paragraph("Parámetros principales del proyecto", styles["h1"]))

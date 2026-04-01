@@ -5,10 +5,12 @@ import json
 import uuid
 import tempfile
 import shutil
+import re
+import unicodedata
 from pathlib import Path
 from typing import Any, Dict, Literal, Optional, Sequence
 
-from fastapi import APIRouter, BackgroundTasks, File
+from fastapi import APIRouter, BackgroundTasks, Query, File
 from fastapi import Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import load_workbook
@@ -41,9 +43,9 @@ QUOTE_TABLE_ALIASES: Dict[str, Sequence[str]] = {
 FINANCIAL_FLOW_TABLE_ALIASES: Dict[str, Sequence[str]] = {
     "anio": ["año", "anio"],
     "equipamiento": ["equipamiento", "inversion", "equipos"],
-    "tarifa": ["tarifa"],
-    "opex": ["opex"],
-    "ahorro": ["ahorro"],
+    "tarifa": ["tarifa", "Tarifa del cliente"],
+    "opex": ["opex", "O&M"],
+    "ahorro": ["ahorro", "ahorro en la facturación"],
     "flujo_total": ["flujo total"],
     "flujo_acumulado": ["flujo acumulado"],
 }
@@ -53,6 +55,40 @@ FINANCIAL_PARAMS_TABLE_ALIASES: Dict[str, Sequence[str]] = {
     "valor": ["valor"],
     "unidad": ["unidad"],
 }
+
+
+def _normalize_sheet_name(name: str) -> str:
+    normalized = unicodedata.normalize("NFKD", name)
+    normalized = "".join(ch for ch in normalized if not unicodedata.combining(ch))
+    normalized = re.sub(r"[^a-zA-Z0-9]+", " ", normalized).strip().lower()
+    return re.sub(r"\s+", " ", normalized)
+
+
+def _find_sheet_by_aliases(sheetnames: Sequence[str], aliases: Sequence[str]) -> Optional[str]:
+    normalized_aliases = [_normalize_sheet_name(alias) for alias in aliases]
+
+    # Primero, prioriza coincidencias exactas para evitar elegir hojas como
+    # "PRINT FINANCIERO" cuando también existe la hoja real "FLUJO DE CAJA".
+    for sheet in sheetnames:
+        normalized_sheet = _normalize_sheet_name(sheet)
+        if normalized_sheet in normalized_aliases:
+            return sheet
+
+    # Luego, aplica una coincidencia más flexible solo como fallback.
+    for sheet in sheetnames:
+        normalized_sheet = _normalize_sheet_name(sheet)
+        if any(alias in normalized_sheet or normalized_sheet in alias for alias in normalized_aliases):
+            return sheet
+    return None
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def _project_root() -> Path:
@@ -65,6 +101,19 @@ def _project_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 
+def _project_storage_dir(project_id: int) -> Path:
+    storage_dir = _project_root() / "python_server" / "storage" / "projects" / str(project_id)
+    storage_dir.mkdir(parents=True, exist_ok=True)
+    return storage_dir
+
+
+def _create_temp_workspace(background_tasks: BackgroundTasks) -> Path:
+    temp_dir = tempfile.mkdtemp(prefix="cotizador_")
+    temp_dir_path = Path(temp_dir)
+    background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
+    return temp_dir_path
+
+
 def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
     root_path = Path(cfg["data_roots"]["ROOT_PATH"]).resolve()
     budget_file = Path(cfg["data_roots"]["Budget_File"]).resolve()
@@ -74,16 +123,48 @@ def _build_report_context(cfg: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"No se pudo abrir el Excel cargado: {exc}") from exc
 
-    required_sheets = {"COTIZACIÓN", "FLUJO DE CAJA"}
-    missing_sheets = sorted(required_sheets.difference(workbook.sheetnames))
+    sheet_aliases = {
+        "cotizacion": [
+            "COTIZACIÓN",
+            "COTIZACION",
+            "COTIZACIONES",
+            "PRESUPUESTO",
+            "PROPUESTA ECONOMICA",
+        ],
+        "finanzas": [
+            "FLUJO DE CAJA",
+            "FLUJO CAJA",
+            "ANÁLISIS FINANCIERO",
+            "ANALISIS FINANCIERO",
+            "FINANZAS",
+            "FINANCIERO",
+            "CASH FLOW",
+        ],
+    }
+
+    cotizacion_sheet_name = _find_sheet_by_aliases(workbook.sheetnames, sheet_aliases["cotizacion"])
+    finanzas_sheet_name = _find_sheet_by_aliases(workbook.sheetnames, sheet_aliases["finanzas"])
+
+    missing_sheets = []
+    if not cotizacion_sheet_name:
+        missing_sheets.append("COTIZACIÓN")
+    if not finanzas_sheet_name:
+        missing_sheets.append("FLUJO DE CAJA / ANÁLISIS FINANCIERO")
+
     if missing_sheets:
         raise HTTPException(
             status_code=400,
             detail=f"Faltan hojas requeridas en el Excel: {', '.join(missing_sheets)}",
         )
 
-    ws_cotizacion = workbook["COTIZACIÓN"]
-    ws_finanzas = workbook["FLUJO DE CAJA"]
+    if cotizacion_sheet_name is None or finanzas_sheet_name is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Faltan hojas requeridas en el Excel",
+        )
+
+    ws_cotizacion = workbook[cotizacion_sheet_name]
+    ws_finanzas = workbook[finanzas_sheet_name]
     datos_cfg = cfg["datos_informe"]
 
     fallback_dict_datos = {
@@ -147,13 +228,11 @@ def _parse_overrides(report_type: ReportType, overrides_json: Optional[str]) -> 
         raise HTTPException(status_code=400, detail=f"overrides_json inválido: {exc}") from exc
 
 
-def _save_uploaded_excel(background_tasks: BackgroundTasks, filename: str) -> tuple[Path, Path]:
-    temp_dir = tempfile.mkdtemp(prefix="cotizador_")
-    temp_dir_path = Path(temp_dir)
-    background_tasks.add_task(shutil.rmtree, temp_dir, ignore_errors=True)
-
-    tmp_excel_path = temp_dir_path / filename
-    return temp_dir_path, tmp_excel_path
+def _save_uploaded_excel(project_id: int, filename: str) -> tuple[Path, Path]:
+    project_dir = _project_storage_dir(project_id)
+    excel_filename = Path(filename).name or "uploaded.xlsx"
+    tmp_excel_path = project_dir / excel_filename
+    return project_dir, tmp_excel_path
 
 
 def _build_merged_overrides(root_path: Path, excel_path: Path, overrides: Dict[str, Any]) -> Dict[str, Any]:
@@ -179,10 +258,35 @@ def _build_response_filename(report_type: ReportType) -> str:
         return "reporte_final.pdf"
     return "reporte_finantial.pdf"
 
+@router.get("/reports/download-excel")
+async def download_excel(project_id: int = Query(...)):
+    db = SessionLocal()
+    try:
+        project = db.execute(
+            select(Project).where(Project.id == project_id)
+        ).scalar_one_or_none()
+
+        if project is None:
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        if not project.excel_file_path:
+            raise HTTPException(status_code=404, detail="El proyecto no tiene un Excel asociado")
+
+        excel_path = Path(project.excel_file_path)
+
+        if not excel_path.exists() or not excel_path.is_file():
+            raise HTTPException(status_code=404, detail="El archivo Excel no existe en el servidor")
+
+        return FileResponse(
+            path=str(excel_path),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=excel_path.name,
+        )
+    finally:
+        db.close()
 
 @router.post("/reports/process-project")
 async def process_project(
-    background_tasks: BackgroundTasks,
     project_id: int = Form(...),
     excel_file: UploadFile = File(...),
     overrides_json: Optional[str] = Form(None),
@@ -200,7 +304,7 @@ async def process_project(
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"overrides_json inválido: {exc}") from exc
 
-    temp_dir_path, tmp_excel_path = _save_uploaded_excel(background_tasks, filename)
+    project_dir, tmp_excel_path = _save_uploaded_excel(project_id, filename)
     contents = await excel_file.read()
     tmp_excel_path.write_bytes(contents)
 
@@ -209,8 +313,8 @@ async def process_project(
     report_context = _build_report_context(cfg)
 
     request_id = uuid.uuid4().hex
-    quote_pdf = temp_dir_path / f"quote_{request_id}.pdf"
-    finantial_pdf = temp_dir_path / f"finantial_{request_id}.pdf"
+    quote_pdf = project_dir / f"quote_{request_id}.pdf"
+    finantial_pdf = project_dir / f"finantial_{request_id}.pdf"
 
     quote_pdf_path = generate_report(
         "quote",
@@ -244,6 +348,8 @@ async def process_project(
     if not quote_pdf_path.exists() or not finantial_pdf_path.exists():
         raise HTTPException(status_code=500, detail="No se generaron los PDFs esperados.")
 
+    time_retorn = _safe_int(finantial_metrics.get("time_retorn"))
+
     db = SessionLocal()
     try:
         project = db.execute(select(Project).where(Project.id == project_id)).scalar_one_or_none()
@@ -253,7 +359,7 @@ async def process_project(
         project.excel_file_path = str(tmp_excel_path)
         project.pdf_quote = str(quote_pdf_path)
         project.pdf_finantial = str(finantial_pdf_path)
-        project.time_retorn = int(finantial_metrics["time_retorn"])
+        project.time_retorn = time_retorn
         project.nro_panels = int(quote_metrics["nro_panels"])
         project.price = float(quote_metrics["price"])
         db.commit()
@@ -266,7 +372,7 @@ async def process_project(
         "excel_file": str(tmp_excel_path),
         "pdf_quote": str(quote_pdf_path),
         "pdf_finantial": str(finantial_pdf_path),
-        "time_retorn": int(finantial_metrics["time_retorn"]),
+        "time_retorn": time_retorn,
         "nro_panels": int(quote_metrics["nro_panels"]),
         "price": float(quote_metrics["price"]),
     }
@@ -301,7 +407,8 @@ async def create_report(
     root_path = _project_root()
     overrides = _parse_overrides(report_type, overrides_json)
 
-    temp_dir_path, tmp_excel_path = _save_uploaded_excel(background_tasks, filename)
+    temp_dir_path = _create_temp_workspace(background_tasks)
+    tmp_excel_path = temp_dir_path / Path(filename).name
 
     contents = await excel_file.read()
     tmp_excel_path.write_bytes(contents)
