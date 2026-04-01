@@ -23,16 +23,27 @@ function CRUD() {
     const [selectedProjectId, setSelectedProjectId] = useState(null);
     const [projectExcelFiles, setProjectExcelFiles] = useState({});
 
-    // PDF Generation State
-    const [busy_quote, setBusy_quote] = useState(false);
-    const [busy_financial, setBusy_financial] = useState(false);
-    const [busy_excel, setBusy_excel] = useState(false);
-    const [message_quote, setMessage_quote] = useState("");
-    const [message_financial, setMessage_financial] = useState("");
-    const [message_excel, setMessage_excel] = useState("");
-    const [messageType_quote, setMessageType_quote] = useState("info");
-    const [messageType_financial, setMessageType_financial] = useState("info");
-    const [messageType_excel, setMessageType_excel] = useState("info");
+    // PDF Generation State - Associated with project.id
+    const [projectStates, setProjectStates] = useState({});
+
+    const getProjectState = (projectId) => ({
+        busy_quote: projectStates[projectId]?.busy_quote || false,
+        busy_financial: projectStates[projectId]?.busy_financial || false,
+        busy_excel: projectStates[projectId]?.busy_excel || false,
+        message_quote: projectStates[projectId]?.message_quote || "",
+        message_financial: projectStates[projectId]?.message_financial || "",
+        message_excel: projectStates[projectId]?.message_excel || "",
+        messageType_quote: projectStates[projectId]?.messageType_quote || "info",
+        messageType_financial: projectStates[projectId]?.messageType_financial || "info",
+        messageType_excel: projectStates[projectId]?.messageType_excel || "info",
+    });
+
+    const updateProjectState = (projectId, updates) => {
+        setProjectStates((prev) => ({
+            ...prev,
+            [projectId]: { ...prev[projectId], ...updates },
+        }));
+    };
 
     // Projects Data State
     const [projects, setProjects] = useState([]);
@@ -437,39 +448,44 @@ function CRUD() {
                                         <button 
                                             id="btnGenerate_excel"
                                             className="btn-secondary"
-                                            disabled={busy_excel || (!projectExcelFiles[project.id] && !project.excel_file_path)}
-                                            onClick={() => DownloadExcel(setMessage_excel, setMessageType_excel, setBusy_excel, project.id)}>
+                                            disabled={getProjectState(project.id).busy_excel || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => DownloadExcel(
+                                                (msg) => updateProjectState(project.id, { message_excel: msg }),
+                                                (msgType) => updateProjectState(project.id, { messageType_excel: msgType }),
+                                                (busy) => updateProjectState(project.id, { busy_excel: busy }),
+                                                project.id
+                                            )}>
                                             Descargar Excel
                                         </button>
                                         <div className="status">
-                                            {busy_excel && <div className="spinner" aria-hidden="true"></div>}
-                                            <span className={`msg ${messageType_excel === "ok" ? "ok" : messageType_excel === "err" ? "err" : ""}`}>{message_excel}</span>
+                                            {getProjectState(project.id).busy_excel && <div className="spinner" aria-hidden="true"></div>}
+                                            <span className={`msg ${getProjectState(project.id).messageType_excel === "ok" ? "ok" : getProjectState(project.id).messageType_excel === "err" ? "err" : ""}`}>{getProjectState(project.id).message_excel}</span>
                                         </div>                                        
                                     </td>
                                     <td>
                                         <button 
                                             id="btnGenerate_quote"
                                             className="btn-secondary"
-                                            disabled={busy_quote || (!projectExcelFiles[project.id] && !project.excel_file_path)}
-                                            onClick={() => generatePdf("quote", setMessage_quote, setMessageType_quote, setBusy_quote, 'reporte_final_quote.pdf', project.id)}>
+                                            disabled={getProjectState(project.id).busy_quote || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => generatePdf("quote", (msg) => updateProjectState(project.id, { message_quote: msg }), (msgType) => updateProjectState(project.id, { messageType_quote: msgType }), (busy) => updateProjectState(project.id, { busy_quote: busy }), 'reporte_final_quote.pdf', project.id)}>
                                             Abrir PDF
                                         </button>
                                         <div className="status">
-                                            {busy_quote && <div className="spinner" aria-hidden="true"></div>}
-                                            <span className={`msg ${messageType_quote === "ok" ? "ok" : messageType_quote === "err" ? "err" : ""}`}>{message_quote}</span>
+                                            {getProjectState(project.id).busy_quote && <div className="spinner" aria-hidden="true"></div>}
+                                            <span className={`msg ${getProjectState(project.id).messageType_quote === "ok" ? "ok" : getProjectState(project.id).messageType_quote === "err" ? "err" : ""}`}>{getProjectState(project.id).message_quote}</span>
                                         </div>
                                     </td>
                                     <td>
                                         <button 
                                             id="btnGenerate_finantial"
                                             className="btn-secondary"
-                                            disabled={busy_financial || (!projectExcelFiles[project.id] && !project.excel_file_path)}
-                                            onClick={() => generatePdf("finantial", setMessage_financial, setMessageType_financial, setBusy_financial, 'reporte_final_finantial.pdf', project.id)}>
+                                            disabled={getProjectState(project.id).busy_financial || (!projectExcelFiles[project.id] && !project.excel_file_path)}
+                                            onClick={() => generatePdf("finantial", (msg) => updateProjectState(project.id, { message_financial: msg }), (msgType) => updateProjectState(project.id, { messageType_financial: msgType }), (busy) => updateProjectState(project.id, { busy_financial: busy }), 'reporte_final_finantial.pdf', project.id)}>
                                             Abrir PDF
                                         </button>
                                         <div className="status">
-                                            {busy_financial && <div className="spinner" aria-hidden="true"></div>}
-                                            <span className={`msg ${messageType_financial === "ok" ? "ok" : messageType_financial === "err" ? "err" : ""}`}>{message_financial}</span>
+                                            {getProjectState(project.id).busy_financial && <div className="spinner" aria-hidden="true"></div>}
+                                            <span className={`msg ${getProjectState(project.id).messageType_financial === "ok" ? "ok" : getProjectState(project.id).messageType_financial === "err" ? "err" : ""}`}>{getProjectState(project.id).message_financial}</span>
                                         </div>                                        
                                     </td>
                                     <td>
